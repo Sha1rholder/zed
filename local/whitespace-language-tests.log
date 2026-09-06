@@ -1,0 +1,11 @@
+   Compiling language v0.1.0 (/home/sha1r/Desktop/zed/crates/language)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 3.51s
+     Running unittests src/language.rs (target/debug/deps/language-25ba6038484a1489)
+
+running 2 tests
+test buffer_tests::test_whitespace_delimited_char_classifier ... ok
+2026-09-06T12:25:20+08:00 [1m[33mWARN [0m [[1mhttp_client[0m] Using fake HTTP client with 404 response
+test buffer_tests::test_whitespace_delimited_surrounding_word ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 169 filtered out; finished in 0.00s
+

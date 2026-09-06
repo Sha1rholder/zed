@@ -186,7 +186,7 @@ use language::{
     DiagnosticEntryRef, DiffOptions, EditPredictionsMode, EditPreview, HighlightedText, IndentKind,
     IndentSize, Language, LanguageAwareStyling, LanguageName, LanguageRegistry, LanguageScope,
     LocalFile, OffsetRangeExt, OutlineItem, Point, Selection, SelectionGoal, TextObject,
-    TransactionId, TreeSitterOptions, WhitespaceDelimited, WordsQuery,
+    TransactionId, TreeSitterOptions, WordsQuery,
     language_settings::{
         self, AllLanguageSettings, LanguageSettings, LspInsertMode, RewrapBehavior,
         WordsCompletionMode, all_language_settings,
@@ -3706,8 +3706,16 @@ impl Editor {
             // this might look odd to put on the background thread, but
             // `surrounding_word` can be quite expensive as it calls into
             // tree-sitter language scopes
-            let (start_word_range, _) = snapshot.surrounding_word(cursor_buffer_position, None);
-            let (end_word_range, _) = snapshot.surrounding_word(tail_buffer_position, None);
+            let start_classifier = snapshot
+                .char_classifier_at(cursor_buffer_position)
+                .ignore_whitespace_delimited(true);
+            let end_classifier = snapshot
+                .char_classifier_at(tail_buffer_position)
+                .ignore_whitespace_delimited(true);
+            let (start_word_range, _) = snapshot
+                .surrounding_word_with_classifier(cursor_buffer_position, &start_classifier);
+            let (end_word_range, _) =
+                snapshot.surrounding_word_with_classifier(tail_buffer_position, &end_classifier);
             (start_word_range, end_word_range)
         });
 
@@ -11896,8 +11904,12 @@ impl SemanticsProvider for WeakEntity<Project> {
                         // Fallback on using TreeSitter info to determine identifier range
                         buffer.read_with(cx, |buffer, _| {
                             let snapshot = buffer.snapshot();
-                            let (range, kind) = snapshot.surrounding_word(position, None);
-                            if kind != Some(CharKind::Word(WhitespaceDelimited::Yes)) {
+                            let classifier = snapshot
+                                .char_classifier_at(position)
+                                .ignore_whitespace_delimited(true);
+                            let (range, kind) =
+                                snapshot.surrounding_word_with_classifier(position, &classifier);
+                            if !matches!(kind, Some(CharKind::Word(_))) {
                                 return None;
                             }
                             Some(RenameTarget {

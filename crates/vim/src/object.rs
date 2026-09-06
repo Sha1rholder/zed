@@ -1972,6 +1972,22 @@ mod test {
     };
 
     #[gpui::test]
+    async fn test_whitespace_delimited_word_objects(cx: &mut gpui::TestAppContext) {
+        let mut cx = VimTestContext::new(cx, true).await;
+        for (initial, keys, expected) in [
+            ("中文ˇabc中文 end", "d i w", "中文ˇ中文 end"),
+            ("中ˇ文abc中文 end", "d i w", "ˇabc中文 end"),
+            ("中文aˇbc中文 end", "d a w", "中文ˇ中文 end"),
+            ("中文ˇabc中文 end", "d i shift-w", "ˇ end"),
+            ("ˇ中文かな한글abc end", "d i w", "ˇabc end"),
+        ] {
+            cx.set_state(initial, Mode::Normal);
+            cx.simulate_keystrokes(keys);
+            cx.assert_state(expected, Mode::Normal);
+        }
+    }
+
+    #[gpui::test]
     async fn test_change_word_object(cx: &mut gpui::TestAppContext) {
         let mut cx = NeovimBackedTestContext::new(cx).await;
 

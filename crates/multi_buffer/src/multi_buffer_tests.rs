@@ -19,6 +19,43 @@ fn init_logger() {
 }
 
 #[gpui::test]
+fn test_whitespace_delimited_word_ranges(cx: &mut App) {
+    let text = "中文abc中文かな한글";
+    let buffer = cx.new(|cx| Buffer::local(text, cx));
+    let multibuffer = cx.new(|cx| MultiBuffer::singleton(buffer, cx));
+    let snapshot = multibuffer.read(cx).snapshot(cx);
+    for (offset, expected) in [
+        (0, "中文"),
+        (3, "中文"),
+        (6, "abc"),
+        (8, "abc"),
+        (9, "中文かな한글"),
+        (text.len(), "中文かな한글"),
+    ] {
+        let offset = MultiBufferOffset(offset);
+        let (range, _) = snapshot.surrounding_word(offset, None);
+        assert_eq!(snapshot.text_for_range(range).collect::<String>(), expected);
+        let classifier = snapshot
+            .char_classifier_at(offset)
+            .ignore_whitespace_delimited(true);
+        let (range, _) = snapshot.surrounding_word_with_classifier(offset, &classifier);
+        assert_eq!(snapshot.text_for_range(range).collect::<String>(), text);
+    }
+    for offset in [0, 6, 9, text.len()] {
+        assert!(
+            !snapshot.is_inside_word(MultiBufferOffset(offset), None),
+            "{offset}"
+        );
+    }
+    for offset in [3, 7, 8, 12, 15, 18, 21, 24] {
+        assert!(
+            snapshot.is_inside_word(MultiBufferOffset(offset), None),
+            "{offset}"
+        );
+    }
+}
+
+#[gpui::test]
 fn test_empty_singleton(cx: &mut App) {
     let buffer = cx.new(|cx| Buffer::local("", cx));
     let buffer_id = buffer.read(cx).remote_id();

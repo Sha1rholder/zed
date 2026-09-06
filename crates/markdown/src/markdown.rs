@@ -41,7 +41,7 @@ use gpui::{
     TextStyle, TextStyleRefinement, WrappedLineLayout, actions, canvas, img, point, quad, relative,
     size,
 };
-use language::{CharClassifier, Language, LanguageRegistry, Rope};
+use language::{CharClassifier, CharKind, Language, LanguageRegistry, Rope};
 use parser::CodeBlockMetadata;
 use parser::{
     MarkdownEvent, MarkdownTag, MarkdownTagEnd, ParsedMetadataBlock, parse_links_only,
@@ -4686,7 +4686,7 @@ impl RenderedText {
             let mut prev_chars = text[..rendered_index_in_line].chars().rev().peekable();
             let mut next_chars = text[rendered_index_in_line..].chars().peekable();
 
-            let word_kind = std::cmp::max(
+            let word_kind = CharKind::surrounding_word_kind(
                 prev_chars.peek().map(|&c| classifier.kind(c)),
                 next_chars.peek().map(|&c| classifier.kind(c)),
             );
@@ -5633,6 +5633,23 @@ mod tests {
         assert_eq!(selection.end, 15);
         assert!(!selection.reversed);
         assert_eq!(selection.tail(), 5);
+    }
+
+    #[gpui::test]
+    fn test_whitespace_delimited_word_selection(cx: &mut TestAppContext) {
+        let rendered = render_markdown("中文abc中文かな한글", cx);
+        for (offset, expected) in [
+            (0, "中文"),
+            (3, "中文"),
+            (6, "abc"),
+            (8, "abc"),
+            (9, "中文かな한글"),
+        ] {
+            assert_eq!(
+                rendered.text_for_range(rendered.surrounding_word_range(offset)),
+                expected
+            );
+        }
     }
 
     #[gpui::test]

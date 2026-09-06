@@ -4,7 +4,7 @@ use client::proto;
 use fancy_regex::{Captures, Regex, RegexBuilder};
 use gpui::Entity;
 use itertools::Itertools as _;
-use language::{Buffer, BufferSnapshot, CharKind, WhitespaceDelimited};
+use language::{Buffer, BufferSnapshot, CharClassifier, CharKind, WhitespaceDelimited};
 use smol::future::yield_now;
 use std::{
     borrow::Cow,
@@ -99,6 +99,36 @@ static WORD_MATCH_TEST: LazyLock<Regex> = LazyLock::new(|| {
         .build()
         .expect("Failed to create WORD_MATCH_TEST")
 });
+
+// Extend only the boundaries inserted by the whole-word option. Explicit `\b`
+// assertions in the user's regex retain their regex-engine meaning.
+static WHOLE_WORD_BOUNDARY: LazyLock<String> = LazyLock::new(|| {
+    let scripts = WhitespaceDelimited::NO_SCRIPTS
+        .iter()
+        .map(|script| format!(r"\p{{sc={}}}", script.full_name()))
+        .collect::<String>();
+    let extensions = WhitespaceDelimited::NO_SCRIPTS
+        .iter()
+        .map(|script| format!(r"\p{{scx={}}}", script.full_name()))
+        .collect::<String>();
+    // Match CharClassifier's alphanumeric test and treatment of shared CJK
+    // characters, including kana prolonged sound marks.
+    let no = format!(
+        r"[[\p{{Alphabetic}}\p{{Number}}]&&[{scripts}[[\p{{Common}}\p{{Inherited}}]&&[{extensions}]]]]"
+    );
+    let yes = format!(r"[[\p{{Alphabetic}}\p{{Number}}_]--{no}]");
+    format!(r"(?:\b|(?<={no})(?={yes})|(?<={yes})(?={no}))")
+});
+
+fn is_whole_word_match(
+    prev: Option<CharKind>,
+    start: Option<CharKind>,
+    end: Option<CharKind>,
+    next: Option<CharKind>,
+) -> bool {
+    !(matches!(start, Some(CharKind::Word(_))) && start == prev
+        || matches!(end, Some(CharKind::Word(_))) && end == next)
+}
 
 impl SearchQuery {
     /// Create a text query
@@ -238,18 +268,20 @@ impl SearchQuery {
             pattern = new_pattern
         }
 
-        if whole_word {
+        // Literal queries using regex for Unicode case folding are filtered in
+        // the same way as text queries, with the buffer's character classifier.
+        if whole_word && !escaped {
             let mut word_pattern = String::new();
             if let Some(first) = pattern.get(0..1)
                 && WORD_MATCH_TEST.is_match(first).is_ok_and(|x| !x)
             {
-                word_pattern.push_str("\\b");
+                word_pattern.push_str(&WHOLE_WORD_BOUNDARY);
             }
             word_pattern.push_str(&pattern);
             if let Some(last) = pattern.get(pattern.len() - 1..)
                 && WORD_MATCH_TEST.is_match(last).is_ok_and(|x| !x)
             {
-                word_pattern.push_str("\\b");
+                word_pattern.push_str(&WHOLE_WORD_BOUNDARY);
             }
             pattern = word_pattern
         }
@@ -525,6 +557,21 @@ impl SearchQuery {
         };
 
         let mut matches = Vec::new();
+        let is_whole_word = |range: Range<usize>| {
+            let classifier = buffer.char_classifier_at(range_offset + range.start);
+            is_whole_word_match(
+                rope.reversed_chars_at(range.start)
+                    .next()
+                    .map(|c| classifier.kind(c)),
+                rope.chars_at(range.start)
+                    .next()
+                    .map(|c| classifier.kind(c)),
+                rope.reversed_chars_at(range.end)
+                    .next()
+                    .map(|c| classifier.kind(c)),
+                rope.chars_at(range.end).next().map(|c| classifier.kind(c)),
+            )
+        };
         match self {
             Self::Text {
                 search, whole_word, ..
@@ -538,25 +585,8 @@ impl SearchQuery {
                     }
 
                     let mat = mat.unwrap();
-                    if *whole_word {
-                        let classifier = buffer.char_classifier_at(range_offset + mat.start());
-
-                        let prev_kind = rope
-                            .reversed_chars_at(mat.start())
-                            .next()
-                            .map(|c| classifier.kind(c));
-                        let start_kind =
-                            classifier.kind(rope.chars_at(mat.start()).next().unwrap());
-                        let end_kind =
-                            classifier.kind(rope.reversed_chars_at(mat.end()).next().unwrap());
-                        let next_kind = rope.chars_at(mat.end()).next().map(|c| classifier.kind(c));
-                        if (Some(start_kind) == prev_kind
-                            && start_kind == CharKind::Word(WhitespaceDelimited::Yes))
-                            || (Some(end_kind) == next_kind
-                                && end_kind == CharKind::Word(WhitespaceDelimited::Yes))
-                        {
-                            continue;
-                        }
+                    if *whole_word && !is_whole_word(mat.start()..mat.end()) {
+                        continue;
                     }
                     matches.push(mat.start()..mat.end())
                 }
@@ -565,6 +595,8 @@ impl SearchQuery {
             Self::Regex {
                 regex,
                 one_match_per_line,
+                whole_word,
+                escaped,
                 ..
             } => {
                 let text = rope.to_string();
@@ -575,6 +607,9 @@ impl SearchQuery {
                     }
 
                     if let std::result::Result::Ok(mat) = mat {
+                        if *escaped && *whole_word && !is_whole_word(mat.start()..mat.end()) {
+                            continue;
+                        }
                         let should_push = if *one_match_per_line {
                             // ensure that only one match per line is returned.
                             let pos = buffer.offset_to_point(mat.start());
@@ -686,7 +721,24 @@ impl SearchQuery {
             return Vec::new();
         }
 
-        let is_word_char = |c: char| c.is_alphanumeric() || c == '_';
+        let classifier = CharClassifier::default();
+        let is_whole_word = |range: Range<usize>| {
+            is_whole_word_match(
+                text[..range.start]
+                    .chars()
+                    .next_back()
+                    .map(|c| classifier.kind(c)),
+                text[range.clone()]
+                    .chars()
+                    .next()
+                    .map(|c| classifier.kind(c)),
+                text[range.clone()]
+                    .chars()
+                    .next_back()
+                    .map(|c| classifier.kind(c)),
+                text[range.end..].chars().next().map(|c| classifier.kind(c)),
+            )
+        };
 
         let mut matches = Vec::new();
         match self {
@@ -694,20 +746,22 @@ impl SearchQuery {
                 search, whole_word, ..
             } => {
                 for mat in search.find_iter(text.as_bytes()) {
-                    if *whole_word {
-                        let prev_char = text[..mat.start()].chars().last();
-                        let next_char = text[mat.end()..].chars().next();
-                        if prev_char.is_some_and(&is_word_char)
-                            || next_char.is_some_and(&is_word_char)
-                        {
-                            continue;
-                        }
+                    if *whole_word && !is_whole_word(mat.start()..mat.end()) {
+                        continue;
                     }
                     matches.push(mat.start()..mat.end());
                 }
             }
-            Self::Regex { regex, .. } => {
+            Self::Regex {
+                regex,
+                whole_word,
+                escaped,
+                ..
+            } => {
                 for mat in regex.find_iter(text).flatten() {
+                    if *escaped && *whole_word && !is_whole_word(mat.start()..mat.end()) {
+                        continue;
+                    }
                     matches.push(mat.start()..mat.end());
                 }
             }

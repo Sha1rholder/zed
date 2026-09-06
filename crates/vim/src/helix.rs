@@ -2068,6 +2068,33 @@ mod test {
     }
 
     #[gpui::test]
+    async fn test_whitespace_delimited_word_motions(cx: &mut gpui::TestAppContext) {
+        let mut cx = VimTestContext::new(cx, true).await;
+        cx.enable_helix();
+        cx.set_state("ˇ中文abc中文 end", Mode::HelixNormal);
+        cx.simulate_keystrokes("w");
+        cx.assert_state("«中文ˇ»abc中文 end", Mode::HelixNormal);
+        cx.simulate_keystrokes("w");
+        cx.assert_state("中文«abcˇ»中文 end", Mode::HelixNormal);
+        cx.simulate_keystrokes("w");
+        cx.assert_state("中文abc«中文 ˇ»end", Mode::HelixNormal);
+        cx.simulate_keystrokes("b");
+        cx.assert_state("中文abc«ˇ中文 »end", Mode::HelixNormal);
+        cx.simulate_keystrokes("b");
+        cx.assert_state("中文«ˇabc»中文 end", Mode::HelixNormal);
+
+        cx.set_state("ˇ中文abc中文 end", Mode::HelixNormal);
+        cx.simulate_keystrokes("2 w");
+        cx.assert_state("中文«abcˇ»中文 end", Mode::HelixNormal);
+        cx.set_state("ˇ中文abc中文 end", Mode::HelixNormal);
+        cx.simulate_keystrokes("shift-w");
+        cx.assert_state("«中文abc中文 ˇ»end", Mode::HelixNormal);
+        cx.set_state("ˇ中文かな한글abc", Mode::HelixNormal);
+        cx.simulate_keystrokes("w");
+        cx.assert_state("«中文かな한글ˇ»abc", Mode::HelixNormal);
+    }
+
+    #[gpui::test]
     async fn test_word_motions(cx: &mut gpui::TestAppContext) {
         let mut cx = VimTestContext::new(cx, true).await;
         cx.enable_helix();

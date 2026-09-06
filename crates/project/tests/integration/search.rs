@@ -8,6 +8,144 @@ use util::{
     rel_path::RelPath,
 };
 
+#[gpui::test]
+async fn test_whitespace_delimited_whole_word_search(cx: &mut gpui::TestAppContext) {
+    for (query, case_sensitive, marked) in [
+        ("abc", true, "中文«abc»中文 «abc» abcdef xabc abc_x"),
+        ("abc", false, "中文«ABC»中文 «abc» abcdef xabc abc_x"),
+        ("中文", true, "abc«中文»def 中文字 中文かな한글 «中文»"),
+        ("中文", false, "abc«中文»def 中文字 中文かな한글 «中文»"),
+        ("é", false, "中«É»文 xÉ «é»"),
+        ("abc中文", true, "中文«abc中文»def abc中文多"),
+        ("abc", true, "ไทยabc abcالعربية abc_123"),
+        ("abc", true, "カタカナー«abc»ﾊﾝｶｸｰ «abc»𠀀"),
+    ] {
+        let (text, expected) = util::test::marked_text_ranges(marked, false);
+        let search = SearchQuery::text(
+            query,
+            true,
+            case_sensitive,
+            false,
+            Default::default(),
+            Default::default(),
+            false,
+            None,
+        )
+        .unwrap();
+        let snapshot =
+            cx.update(|cx| Buffer::build_snapshot_sync(Rope::from(text.as_str()), None, None, cx));
+        assert_eq!(
+            search.search(&snapshot, None).await,
+            expected,
+            "{query:?}: {text}"
+        );
+        assert_eq!(search.search_str(&text), expected, "{query:?}: {text}");
+        if !expected.is_empty() {
+            assert!(
+                search
+                    .detect(BufReader::new(Box::new(std::io::Cursor::new(
+                        text.into_bytes()
+                    ))))
+                    .await
+                    .unwrap()
+                    .is_some()
+            );
+        }
+    }
+
+    let search = SearchQuery::text(
+        "文",
+        false,
+        false,
+        false,
+        Default::default(),
+        Default::default(),
+        false,
+        None,
+    )
+    .unwrap();
+    assert_eq!(search.search_str("中文abc中文"), [3..6, 12..15]);
+}
+
+#[gpui::test]
+async fn test_whitespace_delimited_regex_word_boundaries(cx: &mut gpui::TestAppContext) {
+    for (query, whole_word, marked) in [
+        ("abc", true, "中文«abc»中文 xabc abc_x «abc»"),
+        ("abc", false, "中文«abc»中文 x«abc» «abc»_x «abc»"),
+        (r"\babc\b", true, "中文abc中文 xabc abc_x «abc»"),
+        ("abc", true, "ー«abc»ｰ 々«abc»𠀀 한글«abc»"),
+        ("abc", true, "ไทยabc abcالعربية"),
+        ("edit\\(", true, "中文«edit(»arg) reedit(arg) «edit(»arg)"),
+    ] {
+        let (text, expected) = util::test::marked_text_ranges(marked, false);
+        let search = SearchQuery::regex(
+            query,
+            whole_word,
+            true,
+            false,
+            false,
+            Default::default(),
+            Default::default(),
+            false,
+            None,
+        )
+        .unwrap();
+        let snapshot =
+            cx.update(|cx| Buffer::build_snapshot_sync(Rope::from(text.as_str()), None, None, cx));
+        assert_eq!(
+            search.search(&snapshot, None).await,
+            expected,
+            "{query:?}: {text}"
+        );
+        assert_eq!(search.search_str(&text), expected, "{query:?}: {text}");
+        if !expected.is_empty() {
+            assert!(
+                search
+                    .detect(BufReader::new(Box::new(std::io::Cursor::new(
+                        text.into_bytes()
+                    ))))
+                    .await
+                    .unwrap()
+                    .is_some()
+            );
+        }
+    }
+
+    let search = SearchQuery::regex(
+        "a(b)c",
+        true,
+        true,
+        false,
+        false,
+        Default::default(),
+        Default::default(),
+        false,
+        None,
+    )
+    .unwrap()
+    .with_replacement("B=$1".into());
+    let text = "中文abc中文";
+    assert_eq!(search.search_str(text), [6..9]);
+    assert_eq!(search.replacement_for(text, 6..9).as_deref(), Some("B=b"));
+
+    let (text, expected) = util::test::marked_text_ranges("中文«abc»中文 abc\n«abc»中文", false);
+    let search = SearchQuery::regex(
+        "abc",
+        true,
+        true,
+        false,
+        true,
+        Default::default(),
+        Default::default(),
+        false,
+        None,
+    )
+    .unwrap();
+    let snapshot =
+        cx.update(|cx| Buffer::build_snapshot_sync(Rope::from(text.as_str()), None, None, cx));
+    assert_eq!(search.search(&snapshot, None).await, expected);
+}
+
 #[test]
 fn path_matcher_creation_for_valid_paths() {
     for valid_path in [

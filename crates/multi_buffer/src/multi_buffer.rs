@@ -25,7 +25,7 @@ use language::{
     DiagnosticEntryRef, File, IndentGuideSettings, IndentSize, Language, LanguageAwareStyling,
     LanguageScope, OffsetRangeExt, OffsetUtf16, Outline, OutlineItem, Point, PointUtf16, Selection,
     TextDimension, TextObject, ToOffset as _, ToPoint as _, TransactionId, TreeSitterOptions,
-    Unclipped, WhitespaceDelimited,
+    Unclipped,
     language_settings::{AllLanguageSettings, LanguageSettings},
 };
 
@@ -4087,11 +4087,7 @@ impl MultiBufferSnapshot {
             .reversed_chars_at(position)
             .next()
             .map(|c| classifier.kind(c));
-        prev_char_kind.zip(next_char_kind)
-            == Some((
-                CharKind::Word(WhitespaceDelimited::Yes),
-                CharKind::Word(WhitespaceDelimited::Yes),
-            ))
+        matches!(prev_char_kind, Some(CharKind::Word(_))) && prev_char_kind == next_char_kind
     }
 
     pub fn surrounding_word<T: ToOffset>(
@@ -4099,14 +4095,23 @@ impl MultiBufferSnapshot {
         start: T,
         scope_context: Option<CharScopeContext>,
     ) -> (Range<MultiBufferOffset>, Option<CharKind>) {
+        let start = start.to_offset(self);
+        let classifier = self.char_classifier_at(start).scope_context(scope_context);
+        self.surrounding_word_with_classifier(start, &classifier)
+    }
+
+    /// Like `surrounding_word`, with explicit rules for classifying word characters.
+    pub fn surrounding_word_with_classifier<T: ToOffset>(
+        &self,
+        start: T,
+        classifier: &CharClassifier,
+    ) -> (Range<MultiBufferOffset>, Option<CharKind>) {
         let mut start = start.to_offset(self);
         let mut end = start;
         let mut next_chars = self.chars_at(start).peekable();
         let mut prev_chars = self.reversed_chars_at(start).peekable();
 
-        let classifier = self.char_classifier_at(start).scope_context(scope_context);
-
-        let word_kind = cmp::max(
+        let word_kind = CharKind::surrounding_word_kind(
             prev_chars.peek().copied().map(|c| classifier.kind(c)),
             next_chars.peek().copied().map(|c| classifier.kind(c)),
         );

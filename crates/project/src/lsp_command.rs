@@ -18,7 +18,6 @@ use gpui::{App, AsyncApp, Entity, SharedString, Task, TaskExt, prelude::FluentBu
 use language::{
     Anchor, Bias, Buffer, BufferSnapshot, CachedLspAdapter, CharKind, CharScopeContext,
     OffsetRangeExt, PointUtf16, SymbolKind, ToOffset, ToPointUtf16, Transaction, Unclipped,
-    WhitespaceDelimited,
     language_settings::{InlayHintKind, LanguageSettings},
     lsp_to_symbol_kind, point_from_lsp, point_to_lsp,
     proto::{
@@ -1015,7 +1014,11 @@ impl LspCommand for PrepareRename {
             }
             Some(lsp::PrepareRenameResponse::DefaultBehavior { .. }) => {
                 let snapshot = buffer.snapshot();
-                let (range, _) = snapshot.surrounding_word(self.position, None);
+                let classifier = snapshot
+                    .char_classifier_at(self.position)
+                    .ignore_whitespace_delimited(true);
+                let (range, _) =
+                    snapshot.surrounding_word_with_classifier(self.position, &classifier);
                 let range = snapshot.anchor_after(range.start)..snapshot.anchor_before(range.end);
                 Ok(PrepareRenameResponse::Success {
                     range,
@@ -3302,16 +3305,17 @@ impl LspCommand for GetCompletions {
                             range_for_token
                                 .get_or_insert_with(|| {
                                     let offset = self.position.to_offset(&snapshot);
-                                    let (range, kind) = snapshot.surrounding_word(
-                                        offset,
-                                        Some(CharScopeContext::Completion),
-                                    );
-                                    let range =
-                                        if kind == Some(CharKind::Word(WhitespaceDelimited::Yes)) {
-                                            range
-                                        } else {
-                                            offset..offset
-                                        };
+                                    let classifier = snapshot
+                                        .char_classifier_at(offset)
+                                        .scope_context(Some(CharScopeContext::Completion))
+                                        .ignore_whitespace_delimited(true);
+                                    let (range, kind) = snapshot
+                                        .surrounding_word_with_classifier(offset, &classifier);
+                                    let range = if matches!(kind, Some(CharKind::Word(_))) {
+                                        range
+                                    } else {
+                                        offset..offset
+                                    };
 
                                     snapshot.anchor_before(range.start)
                                         ..snapshot.anchor_after(range.end)

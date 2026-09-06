@@ -1869,6 +1869,7 @@ fn previous_word_end(
                 let left_kind = classifier.kind(left);
                 let right_kind = classifier.kind(right);
                 match (left_kind, right_kind) {
+                    (CharKind::Word(left), CharKind::Word(right)) => left != right,
                     (CharKind::Punctuation, CharKind::Whitespace)
                     | (CharKind::Punctuation, CharKind::Word(_))
                     | (CharKind::Word(_), CharKind::Whitespace)
@@ -2016,6 +2017,7 @@ fn previous_subword_end(
                 }
 
                 match (left_kind, right_kind) {
+                    (CharKind::Word(left), CharKind::Word(right)) => left != right,
                     (CharKind::Word(_), CharKind::Whitespace)
                     | (CharKind::Word(_), CharKind::Punctuation) => true,
                     (CharKind::Punctuation, _) if is_stopping_punct(left) => true,
@@ -3411,6 +3413,75 @@ mod test {
     use indoc::indoc;
     use language::Point;
     use multi_buffer::MultiBufferRow;
+
+    #[gpui::test]
+    async fn test_whitespace_delimited_word_motions(cx: &mut gpui::TestAppContext) {
+        let mut cx = VimTestContext::new(cx, true).await;
+        for (initial, keys, expected) in [
+            ("ˇ中文abc中文 end", "w", "中文ˇabc中文 end"),
+            ("中文ˇabc中文 end", "w", "中文abcˇ中文 end"),
+            ("ˇ中文abc中文 end", "2 w", "中文abcˇ中文 end"),
+            ("中文abcˇ中文 end", "b", "中文ˇabc中文 end"),
+            ("中文abcˇ中文 end", "2 b", "ˇ中文abc中文 end"),
+            ("ˇ中文abc中文 end", "e", "中ˇ文abc中文 end"),
+            ("中ˇ文abc中文 end", "e", "中文abˇc中文 end"),
+            ("中文abcˇ中文 end", "g e", "中文abˇc中文 end"),
+            ("中文abˇc中文 end", "g e", "中ˇ文abc中文 end"),
+            ("ˇ中文abc中文 end", "shift-w", "中文abc中文 ˇend"),
+            ("中文abc中文 ˇend", "shift-b", "ˇ中文abc中文 end"),
+            ("ˇ中文abc中文 end", "shift-e", "中文abc中ˇ文 end"),
+            ("ˇ中文かな한글abc", "w", "中文かな한글ˇabc"),
+            ("ˇ中文abc中文 end", "d w", "ˇabc中文 end"),
+            ("中文abcˇ中文 end", "d b", "中文ˇ中文 end"),
+        ] {
+            cx.set_state(initial, Mode::Normal);
+            cx.simulate_keystrokes(keys);
+            cx.assert_state(expected, Mode::Normal);
+        }
+
+        cx.update(|_, cx| {
+            cx.bind_keys([
+                KeyBinding::new(
+                    "w",
+                    super::NextSubwordStart {
+                        ignore_punctuation: false,
+                    },
+                    None,
+                ),
+                KeyBinding::new(
+                    "b",
+                    super::PreviousSubwordStart {
+                        ignore_punctuation: false,
+                    },
+                    None,
+                ),
+                KeyBinding::new(
+                    "e",
+                    super::NextSubwordEnd {
+                        ignore_punctuation: false,
+                    },
+                    None,
+                ),
+                KeyBinding::new(
+                    "g e",
+                    super::PreviousSubwordEnd {
+                        ignore_punctuation: false,
+                    },
+                    None,
+                ),
+            ]);
+        });
+        for (initial, keys, expected) in [
+            ("ˇ中文abc中文 end", "w", "中文ˇabc中文 end"),
+            ("中文abcˇ中文 end", "b", "中文ˇabc中文 end"),
+            ("中ˇ文abc中文 end", "e", "中文abˇc中文 end"),
+            ("中文abˇc中文 end", "g e", "中ˇ文abc中文 end"),
+        ] {
+            cx.set_state(initial, Mode::Normal);
+            cx.simulate_keystrokes(keys);
+            cx.assert_state(expected, Mode::Normal);
+        }
+    }
 
     #[gpui::test]
     async fn test_start_end_of_paragraph(cx: &mut gpui::TestAppContext) {

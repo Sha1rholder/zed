@@ -3088,6 +3088,77 @@ fn test_beginning_of_line_with_cursor_between_line_start_and_indent(cx: &mut Tes
 }
 
 #[gpui::test]
+async fn test_whitespace_delimited_editor_operations(cx: &mut TestAppContext) {
+    init_test(cx, |_| {});
+    let mut cx = EditorTestContext::new(cx).await;
+    cx.set_state("ˇ中文abc中文");
+    for expected in ["中文ˇabc中文", "中文abcˇ中文", "中文abc中文ˇ"] {
+        cx.update_editor(|editor, window, cx| {
+            editor.move_to_next_word_end(&MoveToNextWordEnd, window, cx)
+        });
+        cx.assert_editor_state(expected);
+    }
+    for expected in ["中文abcˇ中文", "中文ˇabc中文", "ˇ中文abc中文"] {
+        cx.update_editor(|editor, window, cx| {
+            editor.move_to_previous_word_start(&MoveToPreviousWordStart, window, cx)
+        });
+        cx.assert_editor_state(expected);
+    }
+    cx.update_editor(|editor, window, cx| {
+        editor.select_to_next_word_end(&SelectToNextWordEnd, window, cx)
+    });
+    cx.assert_editor_state("«中文ˇ»abc中文");
+
+    cx.set_state("中文abcˇ中文");
+    cx.update_editor(|editor, window, cx| {
+        editor.delete_to_previous_word_start(&Default::default(), window, cx)
+    });
+    cx.assert_editor_state("中文ˇ中文");
+    cx.set_state("中文ˇabc中文");
+    cx.update_editor(|editor, window, cx| {
+        editor.delete_to_next_word_end(&Default::default(), window, cx)
+    });
+    cx.assert_editor_state("中文ˇ中文");
+
+    for (column, expected) in [
+        (0, "«中文ˇ»abc中文"),
+        (3, "«中文ˇ»abc中文"),
+        (6, "中文«abcˇ»中文"),
+        (8, "中文«abcˇ»中文"),
+        (9, "中文abc«中文ˇ»"),
+        (12, "中文abc«中文ˇ»"),
+    ] {
+        cx.set_state("ˇ中文abc中文");
+        cx.update_editor(|editor, window, cx| {
+            editor.begin_selection(
+                DisplayPoint::new(DisplayRow(0), column),
+                false,
+                2,
+                window,
+                cx,
+            );
+            editor.end_selection(window, cx);
+        });
+        cx.assert_editor_state(expected);
+    }
+    for (column, expected) in [(12, "中文«abc中文ˇ»"), (3, "«ˇ中文abc»中文")] {
+        cx.set_state("ˇ中文abc中文");
+        cx.update_editor(|editor, window, cx| {
+            editor.begin_selection(DisplayPoint::new(DisplayRow(0), 6), false, 2, window, cx);
+            editor.update_selection(
+                DisplayPoint::new(DisplayRow(0), column),
+                0,
+                Default::default(),
+                window,
+                cx,
+            );
+            editor.end_selection(window, cx);
+        });
+        cx.assert_editor_state(expected);
+    }
+}
+
+#[gpui::test]
 fn test_prev_next_word_boundary(cx: &mut TestAppContext) {
     init_test(cx, |_| {});
 

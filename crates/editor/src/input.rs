@@ -374,7 +374,8 @@ impl Editor {
                 let start_anchor = snapshot.anchor_before(selection.start);
                 let classifier = snapshot
                     .char_classifier_at(start_anchor)
-                    .scope_context(Some(CharScopeContext::LinkedEdit));
+                    .scope_context(Some(CharScopeContext::LinkedEdit))
+                    .ignore_whitespace_delimited(true);
 
                 if let Some((_, anchor_range)) =
                     snapshot.anchor_range_to_buffer_anchor_range(start_anchor..anchor)

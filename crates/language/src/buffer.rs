@@ -592,6 +592,40 @@ pub enum WhitespaceDelimited {
     No,
 }
 
+impl WhitespaceDelimited {
+    /// Scripts whose word characters form a separate run from other word characters.
+    /// Also used to construct the additional boundaries in whole-word regex searches.
+    pub const NO_SCRIPTS: [unicode_script::Script; 5] = [
+        unicode_script::Script::Han,
+        unicode_script::Script::Bopomofo,
+        unicode_script::Script::Hiragana,
+        unicode_script::Script::Katakana,
+        unicode_script::Script::Hangul,
+    ];
+
+    fn for_char(c: char) -> Self {
+        use unicode_script::{Script, UnicodeScript as _};
+
+        if c.is_ascii() {
+            return Self::Yes;
+        }
+        let script = c.script();
+        let is_shared_cjk = matches!(script, Script::Common | Script::Inherited) && {
+            let extensions = c.script_extension();
+            !extensions.is_common()
+                && !extensions.is_inherited()
+                && Self::NO_SCRIPTS
+                    .iter()
+                    .any(|script| extensions.contains_script(*script))
+        };
+        if Self::NO_SCRIPTS.contains(&script) || is_shared_cjk {
+            Self::No
+        } else {
+            Self::Yes
+        }
+    }
+}
+
 /// A class of characters, used for characterizing a run of text.
 #[derive(Copy, Clone, Eq, PartialEq, PartialOrd, Ord, Debug)]
 pub enum CharKind {
@@ -601,6 +635,18 @@ pub enum CharKind {
     Punctuation,
     /// Word.
     Word(WhitespaceDelimited),
+}
+
+impl CharKind {
+    /// Choose the word under the cursor, retaining the usual preference for words
+    /// over punctuation and whitespace. At a boundary between word kinds, use the
+    /// character to the right instead of the ordering of `WhitespaceDelimited`.
+    pub fn surrounding_word_kind(left: Option<Self>, right: Option<Self>) -> Option<Self> {
+        match (left, right) {
+            (Some(Self::Word(_)), Some(Self::Word(_))) => right,
+            _ => cmp::max(left, right),
+        }
+    }
 }
 
 /// Context for character classification within a specific scope.
@@ -4337,13 +4383,24 @@ impl BufferSnapshot {
         start: T,
         scope_context: Option<CharScopeContext>,
     ) -> (Range<usize>, Option<CharKind>) {
+        let start = start.to_offset(self);
+        let classifier = self.char_classifier_at(start).scope_context(scope_context);
+        self.surrounding_word_with_classifier(start, &classifier)
+    }
+
+    /// Like `surrounding_word`, with explicit classification rules, for example
+    /// to keep mixed-script identifiers intact for completion and semantic edits.
+    pub fn surrounding_word_with_classifier<T: ToOffset>(
+        &self,
+        start: T,
+        classifier: &CharClassifier,
+    ) -> (Range<usize>, Option<CharKind>) {
         let mut start = start.to_offset(self);
         let mut end = start;
         let mut next_chars = self.chars_at(start).take(128).peekable();
         let mut prev_chars = self.reversed_chars_at(start).take(128).peekable();
 
-        let classifier = self.char_classifier_at(start).scope_context(scope_context);
-        let word_kind = cmp::max(
+        let word_kind = CharKind::surrounding_word_kind(
             prev_chars.peek().copied().map(|c| classifier.kind(c)),
             next_chars.peek().copied().map(|c| classifier.kind(c)),
         );
@@ -5982,6 +6039,7 @@ pub struct CharClassifier {
     scope: Option<LanguageScope>,
     scope_context: Option<CharScopeContext>,
     ignore_punctuation: bool,
+    ignore_whitespace_delimited: bool,
 }
 
 impl CharClassifier {
@@ -5990,6 +6048,7 @@ impl CharClassifier {
             scope,
             scope_context: None,
             ignore_punctuation: false,
+            ignore_whitespace_delimited: false,
         }
     }
 
@@ -6007,12 +6066,22 @@ impl CharClassifier {
         }
     }
 
+    /// Keep adjacent word characters together regardless of their script.
+    /// Useful for identifiers, whose spelling can mix whitespace-delimited and
+    /// non-whitespace-delimited scripts.
+    pub fn ignore_whitespace_delimited(self, ignore_whitespace_delimited: bool) -> Self {
+        Self {
+            ignore_whitespace_delimited,
+            ..self
+        }
+    }
+
     pub fn is_whitespace(&self, c: char) -> bool {
         self.kind(c) == CharKind::Whitespace
     }
 
     pub fn is_word(&self, c: char) -> bool {
-        self.kind(c) == CharKind::Word(WhitespaceDelimited::Yes)
+        matches!(self.kind(c), CharKind::Word(_))
     }
 
     pub fn is_punctuation(&self, c: char) -> bool {
@@ -6021,7 +6090,11 @@ impl CharClassifier {
 
     pub fn kind_with(&self, c: char, ignore_punctuation: bool) -> CharKind {
         if c.is_alphanumeric() || c == '_' {
-            return CharKind::Word(WhitespaceDelimited::Yes);
+            return CharKind::Word(if ignore_punctuation || self.ignore_whitespace_delimited {
+                WhitespaceDelimited::Yes
+            } else {
+                WhitespaceDelimited::for_char(c)
+            });
         }
 
         if let Some(scope) = &self.scope {

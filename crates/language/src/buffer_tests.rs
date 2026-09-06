@@ -37,6 +37,91 @@ pub static TRAILING_WHITESPACE_REGEX: LazyLock<regex::Regex> = LazyLock::new(|| 
         .expect("Failed to create TRAILING_WHITESPACE_REGEX")
 });
 
+#[test]
+fn test_whitespace_delimited_char_classifier() {
+    let classifier = CharClassifier::default();
+    let identifier_classifier = classifier.clone().ignore_whitespace_delimited(true);
+    let big_word_classifier = classifier.clone().ignore_punctuation(true);
+    for c in "中文𠀀あいうカタカナ한글한ㄱㄴㄅㄆーｰ々〱".chars() {
+        assert_eq!(
+            classifier.kind(c),
+            CharKind::Word(WhitespaceDelimited::No),
+            "{c}"
+        );
+        assert!(classifier.is_word(c), "{c}");
+        assert_eq!(
+            identifier_classifier.kind(c),
+            CharKind::Word(WhitespaceDelimited::Yes)
+        );
+        assert_eq!(
+            big_word_classifier.kind(c),
+            CharKind::Word(WhitespaceDelimited::Yes)
+        );
+        assert_eq!(
+            classifier.kind_with(c, true),
+            CharKind::Word(WhitespaceDelimited::Yes)
+        );
+    }
+    for c in "abcABC_019éΔЖالعربيةภาษาไทยລາວខ្មែរမြန်မာ"
+        .chars()
+        .filter(|c| c.is_alphanumeric())
+    {
+        assert_eq!(
+            classifier.kind(c),
+            CharKind::Word(WhitespaceDelimited::Yes),
+            "{c}"
+        );
+    }
+    assert_eq!(
+        classifier.kind('_'),
+        CharKind::Word(WhitespaceDelimited::Yes)
+    );
+    for c in "，。・!😀\u{0301}\u{3099}".chars() {
+        assert_eq!(classifier.kind(c), CharKind::Punctuation, "{c}");
+        assert!(!classifier.is_word(c), "{c}");
+    }
+    for c in " \t\n\r\u{3000}".chars() {
+        assert_eq!(classifier.kind(c), CharKind::Whitespace);
+        assert_eq!(big_word_classifier.kind(c), CharKind::Whitespace);
+    }
+}
+
+#[gpui::test]
+fn test_whitespace_delimited_surrounding_word(cx: &mut gpui::App) {
+    let text = "中文abc中文かな한글";
+    let snapshot = Buffer::build_snapshot_sync(Rope::from(text), None, None, cx);
+    for (offset, expected) in [
+        (0, "中文"),
+        (3, "中文"),
+        (6, "abc"),
+        (8, "abc"),
+        (9, "中文かな한글"),
+        (text.len(), "中文かな한글"),
+    ] {
+        let (range, kind) = snapshot.surrounding_word(offset, None);
+        assert_eq!(&text[range], expected, "offset {offset}");
+        assert!(matches!(kind, Some(CharKind::Word(_))));
+        let classifier = snapshot
+            .char_classifier_at(offset)
+            .ignore_whitespace_delimited(true);
+        let (range, _) = snapshot.surrounding_word_with_classifier(offset, &classifier);
+        assert_eq!(&text[range], text);
+    }
+    // Document-word completion continues to collect mixed-script identifiers.
+    let snapshot = Buffer::build_snapshot_sync(Rope::from(format!("{text}\n")), None, None, cx);
+    assert_eq!(
+        snapshot
+            .words_in_range(WordsQuery {
+                fuzzy_contents: None,
+                range: 0..snapshot.len(),
+                skip_digits: false,
+            })
+            .into_keys()
+            .collect::<Vec<_>>(),
+        [text]
+    );
+}
+
 #[cfg(test)]
 #[ctor::ctor(unsafe)]
 fn init_logger() {

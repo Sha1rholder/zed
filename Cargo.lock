@@ -9534,6 +9534,7 @@ dependencies = [
  "tree-sitter-rust",
  "tree-sitter-typescript",
  "unicase",
+ "unicode-script",
  "unindent",
  "util",
  "watch",

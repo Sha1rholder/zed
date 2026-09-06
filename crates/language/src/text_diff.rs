@@ -381,8 +381,9 @@ fn tokenize_chars(text: &str) -> impl Iterator<Item = &str> {
 }
 
 fn tokenize(text: &str, language_scope: Option<LanguageScope>) -> impl Iterator<Item = &str> {
-    let classifier =
-        CharClassifier::new(language_scope).scope_context(Some(CharScopeContext::Completion));
+    let classifier = CharClassifier::new(language_scope)
+        .scope_context(Some(CharScopeContext::Completion))
+        .ignore_whitespace_delimited(true);
     let mut chars = text.char_indices();
     let mut prev = None;
     let mut start_ix = 0;

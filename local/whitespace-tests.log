@@ -1,0 +1,193 @@
+   Compiling serde_json v1.0.151
+   Compiling async-signal v0.2.13
+   Compiling gpui_util v0.1.0 (/home/sha1r/Desktop/zed/crates/gpui_util)
+   Compiling rayon v1.11.0
+   Compiling path v0.1.0 (/home/sha1r/Desktop/zed/crates/path)
+   Compiling async-std v1.13.2
+   Compiling rusty-fork v0.3.1
+   Compiling proptest-macro v0.5.0 (https://github.com/proptest-rs/proptest?rev=3dca198a8fef1b32e3a66f1e1897c955b4dc5b5b#3dca198a)
+   Compiling scheduler v0.1.0 (/home/sha1r/Desktop/zed/crates/scheduler)
+   Compiling tokio v1.52.1
+   Compiling wasmtime-internal-cranelift v48.0.1
+   Compiling aws-lc-rs v1.17.1
+   Compiling collections v0.1.0 (/home/sha1r/Desktop/zed/crates/collections)
+   Compiling async-process v2.5.0 (https://github.com/zed-industries/async-process.git?rev=0b6d6713570af61806e1e5cb40e0f757cb93fd9d#0b6d6713)
+   Compiling perf v0.1.0 (/home/sha1r/Desktop/zed/tooling/perf)
+   Compiling zlog v0.1.0 (/home/sha1r/Desktop/zed/crates/zlog)
+   Compiling proto v0.1.0 (/home/sha1r/Desktop/zed/crates/proto)
+   Compiling util_macros v0.1.0 (/home/sha1r/Desktop/zed/crates/util_macros)
+   Compiling clock v0.1.0 (/home/sha1r/Desktop/zed/crates/clock)
+   Compiling smol v2.0.2
+   Compiling proptest v1.10.0 (https://github.com/proptest-rs/proptest?rev=3dca198a8fef1b32e3a66f1e1897c955b4dc5b5b#3dca198a)
+   Compiling rustls-webpki v0.103.13
+   Compiling schemars v1.0.4
+   Compiling async-tar v0.6.1 (https://github.com/zed-industries/async-tar?rev=bd3ad6f89df9a9da7a8535958756d6bf465936a0#bd3ad6f8)
+   Compiling tracing-subscriber v0.3.22
+   Compiling cloud_llm_client v0.1.0 (/home/sha1r/Desktop/zed/crates/cloud_llm_client)
+   Compiling image v0.25.10
+   Compiling rustls v0.23.40
+   Compiling util v0.1.0 (/home/sha1r/Desktop/zed/crates/util)
+   Compiling gpui_shared_string v0.1.0 (/home/sha1r/Desktop/zed/crates/gpui_shared_string)
+   Compiling net v0.1.0 (/home/sha1r/Desktop/zed/crates/net)
+   Compiling telemetry_events v0.1.0 (/home/sha1r/Desktop/zed/crates/telemetry_events)
+   Compiling rand v0.8.6
+   Compiling ztracing v0.1.0 (/home/sha1r/Desktop/zed/crates/ztracing)
+   Compiling telemetry v0.1.0 (/home/sha1r/Desktop/zed/crates/telemetry)
+   Compiling sum_tree v0.1.0 (/home/sha1r/Desktop/zed/crates/sum_tree)
+   Compiling nucleo v0.5.0
+   Compiling http_client v0.1.0 (/home/sha1r/Desktop/zed/crates/http_client)
+   Compiling paths v0.1.0 (/home/sha1r/Desktop/zed/crates/paths)
+   Compiling rope v0.1.0 (/home/sha1r/Desktop/zed/crates/rope)
+   Compiling num-bigint-dig v0.8.6
+   Compiling lsp-types v0.95.1 (https://github.com/zed-industries/lsp-types?rev=f1783e63a7f4eb4397bf51d4148b4895a1f7ab16#f1783e63)
+   Compiling async-pipe v0.1.3 (https://github.com/zed-industries/async-pipe-rs?rev=82d00a04211cf4e1236029aa03e6b6ce2a74c553#82d00a04)
+   Compiling gpui v0.2.2 (/home/sha1r/Desktop/zed/crates/gpui)
+   Compiling language_model_core v0.1.0 (/home/sha1r/Desktop/zed/crates/language_model_core)
+   Compiling tokio-util v0.7.18
+   Compiling text v0.1.0 (/home/sha1r/Desktop/zed/crates/text)
+   Compiling rsa v0.9.10
+   Compiling wasmtime v48.0.1
+   Compiling tokio-rustls v0.26.4
+   Compiling h2 v0.4.12
+   Compiling tungstenite v0.28.0
+   Compiling language v0.1.0 (/home/sha1r/Desktop/zed/crates/language)
+   Compiling icons v0.1.0 (/home/sha1r/Desktop/zed/crates/icons)
+   Compiling cloud_api_types v0.1.0 (/home/sha1r/Desktop/zed/crates/cloud_api_types)
+   Compiling rustls-platform-verifier v0.7.0
+   Compiling async-tungstenite v0.33.0
+   Compiling http_client_tls v0.1.0 (/home/sha1r/Desktop/zed/crates/http_client_tls)
+   Compiling proxy_handshake v0.1.0 (/home/sha1r/Desktop/zed/crates/proxy_handshake)
+   Compiling dugong-graphlib v0.8.0-alpha.5
+   Compiling merman-core v0.8.0-alpha.5
+   Compiling node_runtime v0.1.0 (/home/sha1r/Desktop/zed/crates/node_runtime)
+   Compiling dugong v0.8.0-alpha.5
+   Compiling dap-types v0.0.1 (https://github.com/zed-industries/dap-types?rev=1b461b310481d01e02b2603c16d7144b926339f8#1b461b31)
+   Compiling wax v0.7.0
+   Compiling env_var v0.1.0 (/home/sha1r/Desktop/zed/crates/env_var)
+   Compiling fancy-regex v0.19.0
+   Compiling async_zip v0.0.18
+   Compiling hyper v1.7.0
+   Compiling sqlez v0.1.0 (/home/sha1r/Desktop/zed/crates/sqlez)
+   Compiling hyper-util v0.1.17
+   Compiling zed_env_vars v0.1.0 (/home/sha1r/Desktop/zed/crates/zed_env_vars)
+   Compiling clap_builder v4.5.49
+   Compiling yawc v0.3.3 (https://github.com/zed-industries/yawc?rev=71a452f551cac178367eaac5d7418a09afa1f3a2#71a452f5)
+   Compiling bytes-utils v0.1.4
+   Compiling ahash v0.8.12
+   Compiling aws-smithy-types v1.4.7
+   Compiling sqlez_macros v0.1.0 (/home/sha1r/Desktop/zed/crates/sqlez_macros)
+   Compiling aws-smithy-async v1.2.14
+   Compiling tree-sitter-html v0.23.2
+   Compiling clap v4.5.49
+   Compiling aws-smithy-runtime-api v1.11.4
+   Compiling pet-core v0.1.0 (https://github.com/microsoft/python-environment-tools.git?rev=bb8e04607b96a3865d6aa4bb2a5a5a82ce05b5f0#bb8e0460)
+   Compiling hashbrown v0.14.5
+   Compiling pet-python-utils v0.1.0 (https://github.com/microsoft/python-environment-tools.git?rev=bb8e04607b96a3865d6aa4bb2a5a5a82ce05b5f0#bb8e0460)
+   Compiling aws-smithy-eventstream v0.60.20
+   Compiling tower v0.5.2
+   Compiling hyper-rustls v0.27.9
+   Compiling pet-jsonrpc v0.1.0 (https://github.com/microsoft/python-environment-tools.git?rev=bb8e04607b96a3865d6aa4bb2a5a5a82ce05b5f0#bb8e0460)
+   Compiling zbus v5.13.2
+   Compiling aws-smithy-http v0.63.4
+   Compiling aws-credential-types v1.2.12
+   Compiling pet-virtualenv v0.1.0 (https://github.com/microsoft/python-environment-tools.git?rev=bb8e04607b96a3865d6aa4bb2a5a5a82ce05b5f0#bb8e0460)
+   Compiling aws-smithy-http-client v1.1.10
+   Compiling aws-smithy-observability v0.2.5
+   Compiling aws-sigv4 v1.4.0
+   Compiling aws-types v1.3.12
+   Compiling pet-reporter v0.1.0 (https://github.com/microsoft/python-environment-tools.git?rev=bb8e04607b96a3865d6aa4bb2a5a5a82ce05b5f0#bb8e0460)
+   Compiling hashlink v0.8.4
+   Compiling anthropic v0.1.0 (/home/sha1r/Desktop/zed/crates/anthropic)
+   Compiling scratch v1.0.9 (/home/sha1r/Desktop/zed/corgi-patches/scratch)
+   Compiling aws-smithy-runtime v1.10.1
+   Compiling yaml-rust2 v0.8.1
+   Compiling aws-smithy-json v0.62.5
+   Compiling open_ai v0.1.0 (/home/sha1r/Desktop/zed/crates/open_ai)
+   Compiling num-bigint v0.4.8
+   Compiling wasmtime-c-api-impl v48.0.1
+   Compiling num-rational v0.4.2
+   Compiling tree-sitter v0.27.0 (https://github.com/tree-sitter/tree-sitter?rev=43623ec9bf0eaaf7113285c46e8a09018f181b18#43623ec9)
+   Compiling aws-runtime v1.7.0
+   Compiling merman-render v0.8.0-alpha.5
+   Compiling settings_json v0.1.0 (/home/sha1r/Desktop/zed/crates/settings_json)
+   Compiling language_core v0.1.0 (/home/sha1r/Desktop/zed/crates/language_core)
+   Compiling pet-conda v0.1.0 (https://github.com/microsoft/python-environment-tools.git?rev=bb8e04607b96a3865d6aa4bb2a5a5a82ce05b5f0#bb8e0460)
+   Compiling zip v0.6.6
+   Compiling cxx-build v1.0.187
+   Compiling serde_with v3.22.0
+   Compiling grammars v0.1.0 (/home/sha1r/Desktop/zed/crates/grammars)
+   Compiling webrtc-sys-build v0.3.13 (https://github.com/zed-industries/livekit-rust-sdks?rev=0a1c519cfce9b365229026b55de9b9dbdb6fed3c#0a1c519c)
+   Compiling atspi-common v0.13.0
+   Compiling google_ai v0.1.0 (/home/sha1r/Desktop/zed/crates/google_ai)
+   Compiling heed-types v0.21.0
+   Compiling agent-client-protocol-schema v1.5.0
+   Compiling wiggle v48.0.1
+   Compiling wasmtime-wasi-io v48.0.1
+   Compiling aws-smithy-query v0.60.15
+   Compiling release_channel v0.1.0 (/home/sha1r/Desktop/zed/crates/release_channel)
+   Compiling askpass v0.1.0 (/home/sha1r/Desktop/zed/crates/askpass)
+   Compiling settings_content v0.1.0 (/home/sha1r/Desktop/zed/crates/settings_content)
+   Compiling syntax_theme v0.1.0 (/home/sha1r/Desktop/zed/crates/syntax_theme)
+   Compiling zed_actions v0.1.0 (/home/sha1r/Desktop/zed/crates/zed_actions)
+   Compiling git v0.1.0 (/home/sha1r/Desktop/zed/crates/git)
+   Compiling theme v0.1.0 (/home/sha1r/Desktop/zed/crates/theme)
+   Compiling fuzzy v0.1.0 (/home/sha1r/Desktop/zed/crates/fuzzy)
+   Compiling rpc v0.1.0 (/home/sha1r/Desktop/zed/crates/rpc)
+   Compiling fuzzy_nucleo v0.1.0 (/home/sha1r/Desktop/zed/crates/fuzzy_nucleo)
+   Compiling task v0.1.0 (/home/sha1r/Desktop/zed/crates/task)
+   Compiling lsp v0.1.0 (/home/sha1r/Desktop/zed/crates/lsp)
+   Compiling credentials_provider v0.1.0 (/home/sha1r/Desktop/zed/crates/credentials_provider)
+   Compiling fs v0.1.0 (/home/sha1r/Desktop/zed/crates/fs)
+   Compiling gpui_tokio v0.1.0 (/home/sha1r/Desktop/zed/crates/gpui_tokio)
+   Compiling cloud_api_client v0.1.0 (/home/sha1r/Desktop/zed/crates/cloud_api_client)
+   Compiling zed_credentials_provider v0.1.0 (/home/sha1r/Desktop/zed/crates/zed_credentials_provider)
+   Compiling component v0.1.0 (/home/sha1r/Desktop/zed/crates/component)
+   Compiling menu v0.1.0 (/home/sha1r/Desktop/zed/crates/menu)
+   Compiling language_model v0.1.0 (/home/sha1r/Desktop/zed/crates/language_model)
+   Compiling ui v0.1.0 (/home/sha1r/Desktop/zed/crates/ui)
+   Compiling db v0.1.0 (/home/sha1r/Desktop/zed/crates/db)
+   Compiling assets v0.1.0 (/home/sha1r/Desktop/zed/crates/assets)
+   Compiling copilot_chat v0.1.0 (/home/sha1r/Desktop/zed/crates/copilot_chat)
+   Compiling session v0.1.0 (/home/sha1r/Desktop/zed/crates/session)
+   Compiling webrtc-sys v0.3.23 (https://github.com/zed-industries/livekit-rust-sdks?rev=0a1c519cfce9b365229026b55de9b9dbdb6fed3c#0a1c519c)
+   Compiling tokio-stream v0.1.17
+   Compiling cached v0.56.0
+   Compiling edit_prediction_metrics v0.1.0 (/home/sha1r/Desktop/zed/crates/edit_prediction_metrics)
+   Compiling heed v0.21.0
+   Compiling sandbox v0.1.0 (/home/sha1r/Desktop/zed/crates/sandbox)
+   Compiling agent-client-protocol v2.0.0
+   Compiling livekit-runtime v0.4.0 (https://github.com/zed-industries/livekit-rust-sdks?rev=0a1c519cfce9b365229026b55de9b9dbdb6fed3c#0a1c519c)
+   Compiling handlebars v4.5.0
+   Compiling agent_skills v0.1.0 (/home/sha1r/Desktop/zed/crates/agent_skills)
+   Compiling atspi-proxies v0.13.0
+   Compiling ui_input v0.1.0 (/home/sha1r/Desktop/zed/crates/ui_input)
+   Compiling wasmtime-wasi v48.0.1
+   Compiling aws-sdk-sts v1.98.0
+   Compiling merman v0.8.0-alpha.5
+   Compiling aws-sdk-ssooidc v1.96.0
+   Compiling mermaid_render v0.1.0 (/home/sha1r/Desktop/zed/crates/mermaid_render)
+   Compiling aws-sdk-sso v1.94.0
+   Compiling aws-sdk-bedrockruntime v1.125.0
+   Compiling brush-parser v0.3.0
+   Compiling num v0.4.3
+   Compiling accesskit_atspi_common v0.19.1
+   Compiling aws-config v1.8.14
+   Compiling migrator v0.1.0 (/home/sha1r/Desktop/zed/crates/migrator)
+   Compiling file_icons v0.1.0 (/home/sha1r/Desktop/zed/crates/file_icons)
+   Compiling atspi v0.29.0
+   Compiling livekit-protocol v0.7.1 (https://github.com/zed-industries/livekit-rust-sdks?rev=0a1c519cfce9b365229026b55de9b9dbdb6fed3c#0a1c519c)
+   Compiling language_models_cloud v0.1.0 (/home/sha1r/Desktop/zed/crates/language_models_cloud)
+   Compiling settings v0.1.0 (/home/sha1r/Desktop/zed/crates/settings)
+   Compiling bedrock v0.1.0 (/home/sha1r/Desktop/zed/crates/bedrock)
+   Compiling openai_subscribed v0.1.0 (/home/sha1r/Desktop/zed/crates/openai_subscribed)
+   Compiling opencode v0.1.0 (/home/sha1r/Desktop/zed/crates/opencode)
+   Compiling pet-hatch v0.1.0 (https://github.com/microsoft/python-environment-tools.git?rev=bb8e04607b96a3865d6aa4bb2a5a5a82ce05b5f0#bb8e0460)
+   Compiling pet-uv v0.1.0 (https://github.com/microsoft/python-environment-tools.git?rev=bb8e04607b96a3865d6aa4bb2a5a5a82ce05b5f0#bb8e0460)
+   Compiling feature_flags v0.1.0 (/home/sha1r/Desktop/zed/crates/feature_flags)
+   Compiling theme_settings v0.1.0 (/home/sha1r/Desktop/zed/crates/theme_settings)
+   Compiling remote v0.1.0 (/home/sha1r/Desktop/zed/crates/remote)
+   Compiling context_server v0.1.0 (/home/sha1r/Desktop/zed/crates/context_server)
+   Compiling git_hosting_providers v0.1.0 (/home/sha1r/Desktop/zed/crates/git_hosting_providers)
+   Compiling terminal v0.1.0 (/home/sha1r/Desktop/zed/crates/terminal)
+   Compiling vim_mode_setting v0.1.0 (/home/sha1r/Desktop/zed/crates/vim_mode_setting)
+   Compiling ollama v0.1.0 (/home/sha1r/Desktop/zed/crates/ollama)

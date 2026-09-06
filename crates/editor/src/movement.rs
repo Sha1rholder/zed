@@ -1042,6 +1042,32 @@ mod tests {
     }
 
     #[gpui::test]
+    fn test_whitespace_delimited_movement(cx: &mut gpui::App) {
+        init_test(cx);
+        for text in [
+            "ˇ中文ˇabc中文",
+            "中文ˇabcˇ中文",
+            "中文abcˇ中文かな한글ˇ",
+            ".ˇ中文ˇabc",
+            "x ˇ中文ˇabc",
+            "ˇالعربيةabcภาษาไทยˇ中文",
+        ] {
+            let (snapshot, points) = marked_display_snapshot(text, cx);
+            let (start, end) = (points[0], points[1]);
+            assert_eq!(previous_word_start(&snapshot, end, false), start, "{text}");
+            assert_eq!(next_word_end(&snapshot, start, false), end, "{text}");
+            assert_eq!(previous_subword_start(&snapshot, end), start, "{text}");
+            assert_eq!(next_subword_end(&snapshot, start), end, "{text}");
+            assert_eq!(
+                previous_word_start_or_newline(&snapshot, end),
+                start,
+                "{text}"
+            );
+            assert_eq!(next_word_end_or_newline(&snapshot, start), end, "{text}");
+        }
+    }
+
+    #[gpui::test]
     fn test_word_movement(cx: &mut gpui::App) {
         init_test(cx);
 

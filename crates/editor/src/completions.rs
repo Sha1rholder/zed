@@ -465,8 +465,11 @@ impl Editor {
             }
         };
 
+        let word_classifier = buffer_snapshot
+            .char_classifier_at(buffer_position)
+            .ignore_whitespace_delimited(true);
         let (word_replace_range, word_to_exclude) = if let (word_range, Some(CharKind::Word(_))) =
-            buffer_snapshot.surrounding_word(buffer_position, None)
+            buffer_snapshot.surrounding_word_with_classifier(buffer_position, &word_classifier)
         {
             let word_to_exclude = buffer_snapshot
                 .text_for_range(word_range.clone())
@@ -832,9 +835,12 @@ impl Editor {
 
     fn completion_query(buffer: &MultiBufferSnapshot, position: impl ToOffset) -> Option<String> {
         let offset = position.to_offset(buffer);
-        let (word_range, kind) =
-            buffer.surrounding_word(offset, Some(CharScopeContext::Completion));
-        if offset > word_range.start && kind == Some(CharKind::Word(WhitespaceDelimited::Yes)) {
+        let classifier = buffer
+            .char_classifier_at(offset)
+            .scope_context(Some(CharScopeContext::Completion))
+            .ignore_whitespace_delimited(true);
+        let (word_range, kind) = buffer.surrounding_word_with_classifier(offset, &classifier);
+        if offset > word_range.start && matches!(kind, Some(CharKind::Word(_))) {
             Some(
                 buffer
                     .text_for_range(word_range.start..offset)
@@ -1137,6 +1143,23 @@ impl Editor {
     #[cfg(test)]
     pub(super) fn disable_word_completions(&mut self) {
         self.word_completions_enabled = false;
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[gpui::test]
+    fn test_whitespace_delimited_completion_query(cx: &mut gpui::App) {
+        let buffer = MultiBuffer::build_simple("中文pri变量", cx);
+        let snapshot = buffer.read(cx).snapshot(cx);
+        for (offset, expected) in [(6, "中文"), (9, "中文pri"), (15, "中文pri变量")] {
+            assert_eq!(
+                Editor::completion_query(&snapshot, MultiBufferOffset(offset)),
+                Some(expected.to_owned())
+            );
+        }
     }
 }
 
