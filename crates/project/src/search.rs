@@ -4,7 +4,7 @@ use client::proto;
 use fancy_regex::{Captures, Regex, RegexBuilder};
 use gpui::Entity;
 use itertools::Itertools as _;
-use language::{Buffer, BufferSnapshot, CharKind};
+use language::{Buffer, BufferSnapshot, CharKind, WhitespaceDelimited};
 use smol::future::yield_now;
 use std::{
     borrow::Cow,
@@ -550,8 +550,10 @@ impl SearchQuery {
                         let end_kind =
                             classifier.kind(rope.reversed_chars_at(mat.end()).next().unwrap());
                         let next_kind = rope.chars_at(mat.end()).next().map(|c| classifier.kind(c));
-                        if (Some(start_kind) == prev_kind && start_kind == CharKind::Word)
-                            || (Some(end_kind) == next_kind && end_kind == CharKind::Word)
+                        if (Some(start_kind) == prev_kind
+                            && start_kind == CharKind::Word(WhitespaceDelimited::Yes))
+                            || (Some(end_kind) == next_kind
+                                && end_kind == CharKind::Word(WhitespaceDelimited::Yes))
                         {
                             continue;
                         }

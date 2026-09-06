@@ -186,7 +186,7 @@ use language::{
     DiagnosticEntryRef, DiffOptions, EditPredictionsMode, EditPreview, HighlightedText, IndentKind,
     IndentSize, Language, LanguageAwareStyling, LanguageName, LanguageRegistry, LanguageScope,
     LocalFile, OffsetRangeExt, OutlineItem, Point, Selection, SelectionGoal, TextObject,
-    TransactionId, TreeSitterOptions, WordsQuery,
+    TransactionId, TreeSitterOptions, WhitespaceDelimited, WordsQuery,
     language_settings::{
         self, AllLanguageSettings, LanguageSettings, LspInsertMode, RewrapBehavior,
         WordsCompletionMode, all_language_settings,
@@ -11897,7 +11897,7 @@ impl SemanticsProvider for WeakEntity<Project> {
                         buffer.read_with(cx, |buffer, _| {
                             let snapshot = buffer.snapshot();
                             let (range, kind) = snapshot.surrounding_word(position, None);
-                            if kind != Some(CharKind::Word) {
+                            if kind != Some(CharKind::Word(WhitespaceDelimited::Yes)) {
                                 return None;
                             }
                             Some(RenameTarget {

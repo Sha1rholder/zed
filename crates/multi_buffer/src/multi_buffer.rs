@@ -25,7 +25,7 @@ use language::{
     DiagnosticEntryRef, File, IndentGuideSettings, IndentSize, Language, LanguageAwareStyling,
     LanguageScope, OffsetRangeExt, OffsetUtf16, Outline, OutlineItem, Point, PointUtf16, Selection,
     TextDimension, TextObject, ToOffset as _, ToPoint as _, TransactionId, TreeSitterOptions,
-    Unclipped,
+    Unclipped, WhitespaceDelimited,
     language_settings::{AllLanguageSettings, LanguageSettings},
 };
 
@@ -4087,7 +4087,11 @@ impl MultiBufferSnapshot {
             .reversed_chars_at(position)
             .next()
             .map(|c| classifier.kind(c));
-        prev_char_kind.zip(next_char_kind) == Some((CharKind::Word, CharKind::Word))
+        prev_char_kind.zip(next_char_kind)
+            == Some((
+                CharKind::Word(WhitespaceDelimited::Yes),
+                CharKind::Word(WhitespaceDelimited::Yes),
+            ))
     }
 
     pub fn surrounding_word<T: ToOffset>(

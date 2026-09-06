@@ -19,7 +19,7 @@ use gpui::{
 };
 use language::{
     Bias, Buffer, BufferRow, CharKind, CharScopeContext, HighlightedText, LocalFile, PLAIN_TEXT,
-    Point, SelectionGoal,
+    Point, SelectionGoal, WhitespaceDelimited,
     language_settings::{FormatOnSave, LanguageSettings},
     proto::serialize_anchor as serialize_text_anchor,
 };
@@ -1835,7 +1835,7 @@ impl SearchableItem for Editor {
             SeedQuerySetting::Always => {
                 let (range, kind) = buffer_snapshot
                     .surrounding_word(selection.start, Some(CharScopeContext::Completion));
-                if kind == Some(CharKind::Word) {
+                if kind == Some(CharKind::Word(WhitespaceDelimited::Yes)) {
                     let text: String = buffer_snapshot.text_for_range(range).collect();
                     if !text.trim().is_empty() {
                         return text;

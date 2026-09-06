@@ -18,6 +18,7 @@ use gpui::{App, AsyncApp, Entity, SharedString, Task, TaskExt, prelude::FluentBu
 use language::{
     Anchor, Bias, Buffer, BufferSnapshot, CachedLspAdapter, CharKind, CharScopeContext,
     OffsetRangeExt, PointUtf16, SymbolKind, ToOffset, ToPointUtf16, Transaction, Unclipped,
+    WhitespaceDelimited,
     language_settings::{InlayHintKind, LanguageSettings},
     lsp_to_symbol_kind, point_from_lsp, point_to_lsp,
     proto::{
@@ -3305,11 +3306,12 @@ impl LspCommand for GetCompletions {
                                         offset,
                                         Some(CharScopeContext::Completion),
                                     );
-                                    let range = if kind == Some(CharKind::Word) {
-                                        range
-                                    } else {
-                                        offset..offset
-                                    };
+                                    let range =
+                                        if kind == Some(CharKind::Word(WhitespaceDelimited::Yes)) {
+                                            range
+                                        } else {
+                                            offset..offset
+                                        };
 
                                     snapshot.anchor_before(range.start)
                                         ..snapshot.anchor_after(range.end)

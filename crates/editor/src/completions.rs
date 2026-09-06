@@ -465,7 +465,7 @@ impl Editor {
             }
         };
 
-        let (word_replace_range, word_to_exclude) = if let (word_range, Some(CharKind::Word)) =
+        let (word_replace_range, word_to_exclude) = if let (word_range, Some(CharKind::Word(_))) =
             buffer_snapshot.surrounding_word(buffer_position, None)
         {
             let word_to_exclude = buffer_snapshot
@@ -834,7 +834,7 @@ impl Editor {
         let offset = position.to_offset(buffer);
         let (word_range, kind) =
             buffer.surrounding_word(offset, Some(CharScopeContext::Completion));
-        if offset > word_range.start && kind == Some(CharKind::Word) {
+        if offset > word_range.start && kind == Some(CharKind::Word(WhitespaceDelimited::Yes)) {
             Some(
                 buffer
                     .text_for_range(word_range.start..offset)

@@ -1870,9 +1870,9 @@ fn previous_word_end(
                 let right_kind = classifier.kind(right);
                 match (left_kind, right_kind) {
                     (CharKind::Punctuation, CharKind::Whitespace)
-                    | (CharKind::Punctuation, CharKind::Word)
-                    | (CharKind::Word, CharKind::Whitespace)
-                    | (CharKind::Word, CharKind::Punctuation) => true,
+                    | (CharKind::Punctuation, CharKind::Word(_))
+                    | (CharKind::Word(_), CharKind::Whitespace)
+                    | (CharKind::Word(_), CharKind::Punctuation) => true,
                     (CharKind::Whitespace, CharKind::Whitespace) => left == '\n' && right == '\n',
                     _ => false,
                 }
@@ -2016,8 +2016,8 @@ fn previous_subword_end(
                 }
 
                 match (left_kind, right_kind) {
-                    (CharKind::Word, CharKind::Whitespace)
-                    | (CharKind::Word, CharKind::Punctuation) => true,
+                    (CharKind::Word(_), CharKind::Whitespace)
+                    | (CharKind::Word(_), CharKind::Punctuation) => true,
                     (CharKind::Punctuation, _) if is_stopping_punct(left) => true,
                     (CharKind::Whitespace, CharKind::Whitespace) => left == '\n' && right == '\n',
                     _ => false,

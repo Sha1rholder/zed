@@ -581,6 +581,17 @@ pub(crate) struct DiagnosticEndpoint {
     is_unnecessary: bool,
 }
 
+/// Whether this chunk of text is from a whitespace-delimited language.
+#[derive(Copy, Clone, Eq, PartialEq, PartialOrd, Ord, Debug)]
+pub enum WhitespaceDelimited {
+    // Arabic and Korean are special case for this classification.
+    // It's for maximizing convenience and efficiency over semantic accuracy.
+    /// English, French, Arabic...
+    Yes,
+    /// Chinese, Japanese, Korean...
+    No,
+}
+
 /// A class of characters, used for characterizing a run of text.
 #[derive(Copy, Clone, Eq, PartialEq, PartialOrd, Ord, Debug)]
 pub enum CharKind {
@@ -589,7 +600,7 @@ pub enum CharKind {
     /// Punctuation.
     Punctuation,
     /// Word.
-    Word,
+    Word(WhitespaceDelimited),
 }
 
 /// Context for character classification within a specific scope.
@@ -6001,7 +6012,7 @@ impl CharClassifier {
     }
 
     pub fn is_word(&self, c: char) -> bool {
-        self.kind(c) == CharKind::Word
+        self.kind(c) == CharKind::Word(WhitespaceDelimited::Yes)
     }
 
     pub fn is_punctuation(&self, c: char) -> bool {
@@ -6010,7 +6021,7 @@ impl CharClassifier {
 
     pub fn kind_with(&self, c: char, ignore_punctuation: bool) -> CharKind {
         if c.is_alphanumeric() || c == '_' {
-            return CharKind::Word;
+            return CharKind::Word(WhitespaceDelimited::Yes);
         }
 
         if let Some(scope) = &self.scope {
@@ -6022,7 +6033,7 @@ impl CharClassifier {
             if let Some(characters) = characters
                 && characters.contains(&c)
             {
-                return CharKind::Word;
+                return CharKind::Word(WhitespaceDelimited::Yes);
             }
         }
 
@@ -6031,7 +6042,7 @@ impl CharClassifier {
         }
 
         if ignore_punctuation {
-            CharKind::Word
+            CharKind::Word(WhitespaceDelimited::Yes)
         } else {
             CharKind::Punctuation
         }
