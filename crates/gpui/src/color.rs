@@ -61,11 +61,13 @@ impl Rgba {
         } else if other.a <= 0.0 {
             *self
         } else {
+            let background_alpha = self.a * (1.0 - other.a);
+            let alpha = other.a + background_alpha;
             Rgba {
-                r: (self.r * (1.0 - other.a)) + (other.r * other.a),
-                g: (self.g * (1.0 - other.a)) + (other.g * other.a),
-                b: (self.b * (1.0 - other.a)) + (other.b * other.a),
-                a: self.a,
+                r: (self.r * background_alpha + other.r * other.a) / alpha,
+                g: (self.g * background_alpha + other.g * other.a) / alpha,
+                b: (self.b * background_alpha + other.b * other.a) / alpha,
+                a: alpha,
             }
         }
     }
