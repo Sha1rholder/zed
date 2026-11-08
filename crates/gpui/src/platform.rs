@@ -2284,6 +2284,19 @@ impl PlatformInputHandler {
             .unwrap_or(false)
     }
 
+    /// Queries IME eligibility for the current focus, even before the next frame is drawn.
+    /// Returns false if the handler is stale or the window can no longer be updated.
+    pub fn query_accepts_ime(&mut self) -> bool {
+        let focus_id = self.focus_id;
+        self.cx
+            .update(|window, cx| {
+                focus_id.is_some()
+                    && window.focus == focus_id
+                    && self.handler.accepts_ime(window, cx)
+            })
+            .unwrap_or(false)
+    }
+
     /// See [`InputHandler::prefers_ime_for_printable_keys`].
     ///
     /// This is not a pure delegation to the handler: while a multi-stroke binding is pending this
@@ -2486,6 +2499,12 @@ pub trait InputHandler: 'static {
     /// Returns whether this handler is accepting text input to be inserted.
     fn accepts_text_input(&mut self, _window: &mut Window, _cx: &mut App) -> bool {
         true
+    }
+
+    /// Whether native IME composition is enabled. Currently honored by Wayland.
+    /// Defaults to text input eligibility, but may be disabled independently of ordinary typing.
+    fn accepts_ime(&mut self, window: &mut Window, cx: &mut App) -> bool {
+        self.accepts_text_input(window, cx)
     }
 
     /// The contiguous range of text, in UTF-16 code units, that platform text

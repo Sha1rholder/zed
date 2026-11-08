@@ -99,7 +99,10 @@ impl<D: PickerDelegate> Picker<D> {
         window: &mut Window,
         cx: &mut Context<Self>,
     ) -> gpui::Div {
-        if let Some(custom) = self.delegate.render_editor(editor, window, cx) {
+        if let Some(custom) = self
+            .delegate
+            .render_editor(editor, self.accepts_ime, window, cx)
+        {
             return custom;
         }
         let editor_position = self.delegate.editor_position();
@@ -114,7 +117,11 @@ impl<D: PickerDelegate> Picker<D> {
                     .px_2p5()
                     .flex_none()
                     .overflow_hidden()
-                    .child(div().flex_1().child(editor.render(window, cx)))
+                    .child(
+                        div()
+                            .flex_1()
+                            .child(editor.render(self.accepts_ime, window, cx)),
+                    )
                     .children(self.delegate.searchbar_trailer(window, cx))
                     .when(self.delegate.supports_multi_select(), |this| {
                         this.child(self.render_multi_select_toggle(cx))

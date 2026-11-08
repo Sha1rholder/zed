@@ -152,6 +152,7 @@ pub trait EntityInputHandler: 'static + Sized {
 pub struct ElementInputHandler<V> {
     view: Entity<V>,
     element_bounds: Bounds<Pixels>,
+    ime_enabled: bool,
 }
 
 impl<V: 'static> ElementInputHandler<V> {
@@ -162,7 +163,15 @@ impl<V: 'static> ElementInputHandler<V> {
         ElementInputHandler {
             view,
             element_bounds,
+            ime_enabled: true,
         }
+    }
+
+    /// Controls native IME input for this rendered element, independently of ordinary typing.
+    /// Currently honored by Wayland. Defaults to enabled.
+    pub fn with_ime_enabled(mut self, ime_enabled: bool) -> Self {
+        self.ime_enabled = ime_enabled;
+        self
     }
 }
 
@@ -292,6 +301,10 @@ impl<V: EntityInputHandler> InputHandler for ElementInputHandler<V> {
     fn accepts_text_input(&mut self, window: &mut Window, cx: &mut App) -> bool {
         self.view
             .update(cx, |view, cx| view.accepts_text_input(window, cx))
+    }
+
+    fn accepts_ime(&mut self, window: &mut Window, cx: &mut App) -> bool {
+        self.ime_enabled && self.accepts_text_input(window, cx)
     }
 
     fn prefers_ime_for_printable_keys(&mut self, window: &mut Window, cx: &mut App) -> bool {
@@ -439,6 +452,7 @@ mod tests {
         use crate::PlatformWindow as _;
         let mut installed_handler = test_window.take_input_handler().unwrap();
         assert!(installed_handler.query_accepts_focused_text_input());
+        assert!(installed_handler.query_accepts_ime());
         assert_eq!(installed_handler.focus_id(), Some(first_focus.id));
         let second_focus = cx
             .update_window(window, |_, window, cx| {
@@ -452,6 +466,7 @@ mod tests {
             })
             .unwrap();
         assert!(!installed_handler.query_accepts_focused_text_input());
+        assert!(!installed_handler.query_accepts_ime());
         test_window.set_input_handler(installed_handler);
         cx.update_window(window, |_, window, cx| {
             window.draw(cx).clear(cx);
@@ -467,8 +482,9 @@ mod tests {
             ]
         );
 
-        let installed_handler = test_window.take_input_handler().unwrap();
+        let mut installed_handler = test_window.take_input_handler().unwrap();
         assert_eq!(installed_handler.focus_id(), Some(second_focus.id));
+        assert!(installed_handler.query_accepts_ime());
         test_window.set_input_handler(installed_handler);
         cx.update_window(window, |_, window, cx| {
             window.draw(cx).clear(cx);
@@ -480,6 +496,11 @@ mod tests {
             view.accepts_text_input = false;
             cx.notify();
         });
+        let mut installed_handler = test_window
+            .take_input_handler()
+            .expect("the focused view has an input handler");
+        assert!(!installed_handler.query_accepts_ime());
+        test_window.set_input_handler(installed_handler);
         cx.update_window(window, |_, window, cx| {
             window.draw(cx).clear(cx);
             window.notify_text_input_changed(&second_focus);

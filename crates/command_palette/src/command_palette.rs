@@ -145,6 +145,7 @@ impl CommandPalette {
         let picker = cx.new(|cx| {
             // One-shot action; there's nothing to reopen.
             let picker = Picker::uniform_list(delegate, window, cx)
+                .accepts_ime(false)
                 .initial_width(rems(38.0))
                 .reopenable(false, cx)
                 .show_scrollbar(true);
@@ -946,7 +947,7 @@ mod tests {
     use super::*;
     use editor::Editor;
     use go_to_line::GoToLine;
-    use gpui::{TestAppContext, VisualTestContext};
+    use gpui::{PlatformWindow as _, TestAppContext, VisualTestContext};
     use language::Point;
     use project::Project;
     use settings::KeymapFile;
@@ -1049,6 +1050,15 @@ mod tests {
                 .clone()
         });
 
+        cx.update(|window, cx| window.draw(cx).clear(cx));
+        let mut test_window = cx.test_window(cx.window_handle());
+        let mut input_handler = test_window
+            .take_input_handler()
+            .expect("the command palette has an input handler");
+        assert!(!input_handler.query_accepts_ime());
+        assert!(input_handler.query_accepts_focused_text_input());
+        test_window.set_input_handler(input_handler);
+
         palette.read_with(cx, |palette, _| {
             assert!(palette.delegate.commands.len() > 5);
             let is_sorted =
@@ -1068,6 +1078,13 @@ mod tests {
             assert!(workspace.active_modal::<CommandPalette>(cx).is_none());
             assert_eq!(editor.read(cx).text(cx), "ab")
         });
+
+        cx.update(|window, cx| window.draw(cx).clear(cx));
+        let mut input_handler = test_window
+            .take_input_handler()
+            .expect("the editor regains its input handler after the palette closes");
+        assert!(input_handler.query_accepts_ime());
+        test_window.set_input_handler(input_handler);
 
         cx.dispatch_action(Toggle);
         let history_button = cx.debug_bounds("command-history-0").unwrap();

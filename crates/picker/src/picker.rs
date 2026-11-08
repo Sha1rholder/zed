@@ -128,6 +128,7 @@ pub struct Picker<D: PickerDelegate> {
     pub delegate: D,
     element_container: ElementContainer,
     head: Head,
+    accepts_ime: bool,
     preview: Option<Preview>,
     pending_update_matches: Option<PendingUpdateMatches>,
     confirm_on_update: Option<bool>,
@@ -356,10 +357,11 @@ pub trait PickerDelegate: Sized + 'static {
     /// Overrides the search bar entirely. Most delegates should return `None`
     /// to get the picker-rendered default (which includes
     /// [`Self::searchbar_trailer`] and the multi-select toggle); override for
-    /// full control over the search bar.
+    /// full control over the search bar. Forward `accepts_ime` when rendering the editor.
     fn render_editor(
         &self,
         _editor: &Arc<dyn ErasedEditor>,
+        _accepts_ime: bool,
         _window: &mut Window,
         _cx: &mut Context<Picker<Self>>,
     ) -> Option<Div> {
@@ -622,6 +624,7 @@ impl<D: PickerDelegate> Picker<D> {
         let mut this = Self {
             delegate,
             head,
+            accepts_ime: true,
             element_container,
             pending_update_matches: None,
             confirm_on_update: None,
@@ -722,6 +725,13 @@ impl<D: PickerDelegate> Picker<D> {
         self.preview
             .as_ref()
             .is_some_and(|preview| preview.layout != preview::Layout::Hidden)
+    }
+
+    /// Controls native IME input for the query editor on Wayland, independently of ordinary typing.
+    /// Defaults to enabled. Pickers without a query editor are unaffected.
+    pub fn accepts_ime(mut self, accepts_ime: bool) -> Self {
+        self.accepts_ime = accepts_ime;
+        self
     }
 
     pub fn show_scrollbar(mut self, show_scrollbar: bool) -> Self {
@@ -1641,7 +1651,7 @@ impl<D: PickerDelegate> Picker<D> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use gpui::TestAppContext;
+    use gpui::{ClipboardItem, Entity, PlatformWindow as _, TestAppContext};
     use std::cell::Cell;
 
     struct TestDelegate {
@@ -1653,6 +1663,7 @@ mod tests {
         supports_multi_select: bool,
         selected_items: Vec<usize>,
         multi_confirmed: Rc<Cell<Option<Vec<usize>>>>,
+        custom_editor: bool,
     }
 
     impl TestDelegate {
@@ -1666,6 +1677,7 @@ mod tests {
                 supports_multi_select: false,
                 selected_items: Vec::new(),
                 multi_confirmed: Rc::new(Cell::new(None)),
+                custom_editor: false,
             }
         }
 
@@ -1710,6 +1722,17 @@ mod tests {
 
         fn placeholder_text(&self, _window: &mut Window, _cx: &mut App) -> Arc<str> {
             "Test".into()
+        }
+
+        fn render_editor(
+            &self,
+            editor: &Arc<dyn ErasedEditor>,
+            accepts_ime: bool,
+            window: &mut Window,
+            cx: &mut Context<Picker<Self>>,
+        ) -> Option<Div> {
+            self.custom_editor
+                .then(|| div().child(editor.render(accepts_ime, window, cx)))
         }
 
         fn update_matches(
@@ -1806,6 +1829,91 @@ mod tests {
             theme_settings::init(theme::LoadThemes::JustBase, cx);
             editor::init(cx);
         });
+    }
+
+    #[gpui::test]
+    fn test_ime_enabled_by_default(cx: &mut TestAppContext) {
+        init_test(cx);
+        let (picker, cx) = cx.add_window_view(|window, cx| {
+            Picker::uniform_list(TestDelegate::new(vec![true]), window, cx)
+        });
+        picker.update_in(cx, |picker, window, cx| picker.focus(window, cx));
+        cx.update(|window, cx| window.draw(cx).clear(cx));
+
+        let mut test_window = cx.test_window(cx.window_handle());
+        let mut input_handler = test_window
+            .take_input_handler()
+            .expect("the focused picker has an input handler");
+        assert!(input_handler.query_accepts_ime());
+        input_handler.replace_and_mark_text_in_range(None, "zhong", Some(5..5));
+        assert_eq!(picker.read_with(cx, |picker, cx| picker.query(cx)), "zhong");
+        assert_eq!(input_handler.marked_text_range(), Some(0..5));
+        input_handler.replace_text_in_range(None, "中");
+        assert_eq!(picker.read_with(cx, |picker, cx| picker.query(cx)), "中");
+        assert_eq!(input_handler.marked_text_range(), None);
+        test_window.set_input_handler(input_handler);
+    }
+
+    #[gpui::test]
+    fn test_ime_disabled_preserves_text_input(cx: &mut TestAppContext) {
+        init_test(cx);
+        for custom_editor in [false, true] {
+            let (picker, cx) = cx.add_window_view(|window, cx| {
+                let mut delegate = TestDelegate::new(vec![true]);
+                delegate.custom_editor = custom_editor;
+                Picker::uniform_list(delegate, window, cx).accepts_ime(false)
+            });
+            picker.update_in(cx, |picker, window, cx| picker.focus(window, cx));
+            cx.update(|window, cx| window.draw(cx).clear(cx));
+
+            let mut test_window = cx.test_window(cx.window_handle());
+            let mut input_handler = test_window
+                .take_input_handler()
+                .expect("the focused picker has an input handler");
+            assert!(!input_handler.query_accepts_ime());
+            assert!(input_handler.query_accepts_focused_text_input());
+            test_window.set_input_handler(input_handler);
+
+            cx.simulate_input("abc");
+            cx.update(|_, cx| cx.write_to_clipboard(ClipboardItem::new_string("中文".into())));
+            cx.dispatch_action(editor::actions::Paste);
+            assert_eq!(
+                picker.read_with(cx, |picker, cx| picker.query(cx)),
+                "abc中文"
+            );
+
+            picker.update_in(cx, |picker, window, cx| {
+                picker.set_query("查询", window, cx)
+            });
+            assert_eq!(picker.read_with(cx, |picker, cx| picker.query(cx)), "查询");
+
+            let query_editor = picker.read_with(cx, |picker, _| {
+                let Head::Editor(editor) = &picker.head else {
+                    panic!("the searchable picker has an editor");
+                };
+                editor
+                    .as_any()
+                    .downcast_ref::<Entity<editor::Editor>>()
+                    .expect("the query editor is an Editor entity")
+                    .clone()
+            });
+            cx.replace_root_view(|_, _| StandaloneEditor(query_editor.clone()));
+            cx.focus(&query_editor);
+            cx.update(|window, cx| window.draw(cx).clear(cx));
+            let mut input_handler = test_window
+                .take_input_handler()
+                .expect("the standalone editor has an input handler");
+            assert!(input_handler.query_accepts_ime());
+            test_window.set_input_handler(input_handler);
+        }
+    }
+
+    struct StandaloneEditor(Entity<editor::Editor>);
+
+    impl Render for StandaloneEditor {
+        fn render(&mut self, _window: &mut Window, _cx: &mut Context<Self>) -> impl IntoElement {
+            self.0.clone()
+        }
     }
 
     #[gpui::test]

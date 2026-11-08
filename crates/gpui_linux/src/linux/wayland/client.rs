@@ -741,6 +741,7 @@ impl WaylandClientStatePtr {
         let mut state = client.borrow_mut();
         state.ime_enabled = Some(false);
         state.composing = false;
+        state.ime_pre_edit = None;
         if let Some(text_input) = &state.text_input {
             text_input.disable();
             text_input.commit();
@@ -2303,10 +2304,38 @@ impl Dispatch<zwp_text_input_v3::ZwpTextInputV3, ()> for WaylandClientStatePtr {
     ) {
         let client = this.get_client();
         let mut state = client.borrow_mut();
+
+        if matches!(
+            &event,
+            zwp_text_input_v3::Event::CommitString { .. }
+                | zwp_text_input_v3::Event::PreeditString { .. }
+                | zwp_text_input_v3::Event::Done { .. }
+        ) {
+            let window = state
+                .keyboard_focused_window
+                .clone()
+                .filter(|_| state.ime_enabled == Some(true));
+            drop(state);
+            let accepts_ime = window.is_some_and(|window| window.accepts_ime());
+            state = client.borrow_mut();
+            if !accepts_ime {
+                state.composing = false;
+                state.ime_pre_edit = None;
+                return;
+            }
+        }
+
         match event {
-            zwp_text_input_v3::Event::Enter { .. } => {
+            zwp_text_input_v3::Event::Enter { surface, .. } => {
+                // Each entered surface needs its own enable request, even if the previous one accepted IME.
+                state.ime_enabled = None;
+                state.composing = false;
+                state.ime_pre_edit = None;
+                let window = get_window(&mut state, &surface.id());
                 drop(state);
-                this.enable_ime();
+                if let Some(window) = window {
+                    window.update_ime_enabled();
+                }
             }
             zwp_text_input_v3::Event::Leave { .. } => {
                 drop(state);
@@ -2549,7 +2578,7 @@ impl Dispatch<wl_pointer::WlPointer, ()> for WaylandClientStatePtr {
                                 drop(state);
                                 // text_input_v3 don't have something like a reset function
                                 this.disable_ime();
-                                this.enable_ime();
+                                window.update_ime_enabled();
                                 window.handle_ime(ImeInput::UnmarkText);
                                 state = client.borrow_mut();
                             } else if let (Some(text), Some(compose)) =

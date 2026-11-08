@@ -355,6 +355,7 @@ pub struct EditorElement {
     editor: Entity<Editor>,
     style: EditorStyle,
     split_side: Option<SplitSide>,
+    accepts_ime: bool,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -371,7 +372,19 @@ impl EditorElement {
             editor: editor.clone(),
             style,
             split_side: None,
+            accepts_ime: true,
         }
+    }
+
+    /// Uses the editor's own style while allowing per-render input configuration.
+    pub fn from_editor(editor: &Entity<Editor>, cx: &App) -> Self {
+        Self::new(editor, editor.read(cx).create_style(cx))
+    }
+
+    /// Controls native IME input for this rendering on Wayland. Defaults to enabled.
+    pub fn accepts_ime(mut self, accepts_ime: bool) -> Self {
+        self.accepts_ime = accepts_ime;
+        self
     }
 
     pub fn set_split_side(&mut self, side: SplitSide) {
@@ -10109,7 +10122,8 @@ impl Element for EditorElement {
             window.set_key_context(key_context);
             window.handle_input(
                 &focus_handle,
-                ElementInputHandler::new(bounds, self.editor.clone()),
+                ElementInputHandler::new(bounds, self.editor.clone())
+                    .with_ime_enabled(self.accepts_ime),
                 cx,
             );
             self.register_actions(window, cx);

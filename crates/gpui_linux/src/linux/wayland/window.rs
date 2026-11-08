@@ -1069,21 +1069,32 @@ impl WaylandWindowStatePtr {
         self.schedule_frame();
     }
 
-    fn update_ime_enabled(&self) {
+    pub(super) fn accepts_ime(&self) -> bool {
+        if self.is_blocked() {
+            return false;
+        }
         let mut state = self.state.borrow_mut();
+        if !state.active {
+            return false;
+        }
+        if let Some(mut input_handler) = state.input_handler.take() {
+            drop(state);
+            let accepts_ime = input_handler.query_accepts_ime();
+            self.state.borrow_mut().input_handler = Some(input_handler);
+            accepts_ime
+        } else {
+            false
+        }
+    }
+
+    pub(super) fn update_ime_enabled(&self) {
+        let state = self.state.borrow();
         if !state.active {
             return;
         }
         let client = state.client.clone();
-        let ime_enabled = if let Some(mut input_handler) = state.input_handler.take() {
-            drop(state);
-            let accepts_text_input = input_handler.query_accepts_text_input();
-            self.state.borrow_mut().input_handler = Some(input_handler);
-            accepts_text_input
-        } else {
-            drop(state);
-            false
-        };
+        drop(state);
+        let ime_enabled = self.accepts_ime();
         if Some(ime_enabled) == client.ime_enabled() {
             return;
         }

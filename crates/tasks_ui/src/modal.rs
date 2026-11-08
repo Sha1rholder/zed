@@ -737,7 +737,7 @@ mod tests {
     use std::{path::PathBuf, sync::Arc};
 
     use editor::{Editor, SelectionEffects};
-    use gpui::{App, Entity, Task, TestAppContext, VisualTestContext};
+    use gpui::{App, Entity, PlatformWindow as _, Task, TestAppContext, VisualTestContext};
     use language::{
         Buffer, ContextProvider, FakeLspAdapter, Language, LanguageConfig, LanguageMatcher,
         LanguageServerName, Point,
@@ -794,6 +794,19 @@ mod tests {
             vec!["another one", "example task"],
             "With no global tasks and no open item, a single worktree should be used and its tasks listed"
         );
+        cx.update(|window, cx| window.draw(cx).clear(cx));
+        let mut test_window = cx.test_window(cx.window_handle());
+        let mut input_handler = test_window
+            .take_input_handler()
+            .expect("the tasks picker has an input handler");
+        assert!(input_handler.query_accepts_ime());
+        input_handler.replace_and_mark_text_in_range(None, "ren", Some(3..3));
+        assert_eq!(query(&tasks_picker, cx), "ren");
+        input_handler.replace_text_in_range(None, "任务");
+        assert_eq!(query(&tasks_picker, cx), "任务");
+        assert_eq!(input_handler.marked_text_range(), None);
+        test_window.set_input_handler(input_handler);
+        tasks_picker.update_in(cx, |picker, window, cx| picker.set_query("", window, cx));
         drop(tasks_picker);
 
         let _ = workspace

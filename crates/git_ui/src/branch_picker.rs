@@ -1,5 +1,5 @@
 use anyhow::Context as _;
-use editor::Editor;
+use editor::{Editor, EditorElement};
 use fuzzy_nucleo::StringMatchCandidate;
 
 use collections::{HashMap, HashSet};
@@ -1313,8 +1313,9 @@ impl PickerDelegate for BranchListDelegate {
     fn render_editor(
         &self,
         editor: &Arc<dyn ErasedEditor>,
+        accepts_ime: bool,
         _window: &mut Window,
-        _cx: &mut Context<Picker<Self>>,
+        cx: &mut Context<Picker<Self>>,
     ) -> Option<Div> {
         let editor = editor.as_any().downcast_ref::<Entity<Editor>>().unwrap();
         let editor_start = matches!(self.editor_position(), PickerEditorPosition::Start);
@@ -1345,7 +1346,7 @@ impl PickerDelegate for BranchListDelegate {
                         .px_2p5()
                         .flex_none()
                         .overflow_hidden()
-                        .child(editor.clone())
+                        .child(EditorElement::from_editor(editor, cx).accepts_ime(accepts_ime))
                         .when(self.has_filter_menu, |this| {
                             let branch_filter = self.branch_filter;
                             let focus_handle = self.focus_handle.clone();

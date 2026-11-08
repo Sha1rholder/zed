@@ -12921,7 +12921,7 @@ impl ui_input::ErasedEditor for ErasedEditorImpl {
         self.0.read(cx).focus_handle(cx)
     }
 
-    fn render(&self, _: &mut Window, cx: &App) -> AnyElement {
+    fn render(&self, accepts_ime: bool, _: &mut Window, cx: &App) -> AnyElement {
         let settings = ThemeSettings::get_global(cx);
         let theme_color = cx.theme().colors();
 
@@ -12942,7 +12942,9 @@ impl ui_input::ErasedEditor for ErasedEditorImpl {
             text: text_style,
             ..Default::default()
         };
-        EditorElement::new(&self.0, editor_style).into_any()
+        EditorElement::new(&self.0, editor_style)
+            .accepts_ime(accepts_ime)
+            .into_any()
     }
 
     fn as_any(&self) -> &dyn Any {

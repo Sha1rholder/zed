@@ -188,7 +188,7 @@ impl Render for RemoteConnectionPrompt {
                                     )
                                 }),
                         )
-                        .child(div().flex_1().child(self.editor.render(window, cx))),
+                        .child(div().flex_1().child(self.editor.render(true, window, cx))),
                 )
                 .when(window.capslock().on, |this| {
                     this.child(
