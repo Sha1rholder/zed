@@ -8,7 +8,7 @@ pub mod status;
 
 pub use crate::hosting_provider::*;
 pub use crate::remote::*;
-use anyhow::Result;
+use anyhow::{Context as _, Result};
 use gpui::{Action, actions};
 pub use repository::RemoteCommandOutput;
 use schemars::JsonSchema;
@@ -165,6 +165,23 @@ pub struct RenameBranch {
 /// Trim. Then replace ` `  with `-`.
 pub fn normalize_branch_name(query: &str) -> String {
     query.trim().replace(' ', "-")
+}
+
+pub async fn is_valid_branch_name(name: &str) -> Result<bool> {
+    let output = util::command::new_command("git")
+        .args(["check-ref-format", "--branch"])
+        .arg(name)
+        .kill_on_drop(true)
+        .output()
+        .await
+        .context("failed to run git check-ref-format --branch")?;
+    let exit_code = output.status.code().with_context(|| {
+        format!(
+            "git check-ref-format --branch terminated: {}",
+            output.status
+        )
+    })?;
+    Ok(exit_code == 0)
 }
 
 /// Restores a file to its last committed state, discarding local changes.
@@ -380,6 +397,20 @@ impl From<Oid> for usize {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// `git check-ref-format --branch` accepts single-component branch names,
+    /// rejects leading `-`, and expands `@{-1}`.
+    #[test]
+    fn test_branch_name_validation() {
+        smol::block_on(async {
+            for name in ["@{-1}", "-xxx"] {
+                assert!(
+                    !is_valid_branch_name(name).await.expect("Git should run"),
+                    "{name:?}"
+                );
+            }
+        });
+    }
 
     #[test]
     fn test_normalize_branch_name() {

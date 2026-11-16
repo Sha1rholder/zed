@@ -449,11 +449,82 @@ pub fn git_status_icon(status: FileStatus) -> impl IntoElement {
     GitStatusIcon::new(status)
 }
 
+#[derive(Default)]
+struct BranchNameValidation {
+    generation: usize,
+    state: BranchNameValidationState,
+    task: Option<Task<()>>,
+}
+
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+enum BranchNameValidationState {
+    #[default]
+    Unchecked,
+    Invalid,
+    Valid,
+}
+
+impl BranchNameValidation {
+    fn validate(&mut self, name: Option<String>, cx: &mut Context<Self>) {
+        self.validate_with(
+            name,
+            |name| async move { git::is_valid_branch_name(&name).await },
+            cx,
+        );
+    }
+
+    fn validate_with<F>(
+        &mut self,
+        name: Option<String>,
+        check: impl FnOnce(String) -> F + Send + 'static,
+        cx: &mut Context<Self>,
+    ) where
+        F: std::future::Future<Output = anyhow::Result<bool>> + Send + 'static,
+    {
+        self.generation += 1;
+        self.task = None;
+        self.state = BranchNameValidationState::Unchecked;
+        cx.notify();
+        let Some(name) = name else { return };
+        let generation = self.generation;
+        let executor = cx.background_executor().clone();
+        self.task = Some(cx.spawn(async move |this, cx| {
+            executor.timer(std::time::Duration::from_millis(200)).await;
+            let result = cx.background_spawn(async move { check(name).await }).await;
+            this.update(cx, |this, cx| {
+                this.finish(generation, result);
+                cx.notify();
+            })
+            .log_err();
+        }));
+    }
+
+    fn finish(&mut self, generation: usize, result: anyhow::Result<bool>) {
+        if self.generation == generation {
+            self.state = match result.log_err() {
+                Some(true) => BranchNameValidationState::Valid,
+                Some(false) => BranchNameValidationState::Invalid,
+                None => BranchNameValidationState::Unchecked,
+            };
+        }
+    }
+
+    fn is_valid(&self) -> bool {
+        self.state == BranchNameValidationState::Valid
+    }
+
+    fn is_invalid(&self) -> bool {
+        self.state == BranchNameValidationState::Invalid
+    }
+}
+
 struct RenameBranchModal {
     current_branch: SharedString,
     editor: Entity<Editor>,
     repo: Entity<Repository>,
     _editor_subscription: Subscription,
+    validation: Entity<BranchNameValidation>,
+    _validation_subscription: Subscription,
 }
 
 impl RenameBranchModal {
@@ -468,8 +539,14 @@ impl RenameBranchModal {
             editor.set_text(current_branch.clone(), window, cx);
             editor
         });
-        let editor_subscription = cx.subscribe(&editor, |_, _, event, cx| {
+        let validation = cx.new(|_| BranchNameValidation::default());
+        let validation_subscription = cx.observe(&validation, |_, _, cx| cx.notify());
+        let editor_subscription = cx.subscribe(&editor, |this, editor, event, cx| {
             if let editor::EditorEvent::BufferEdited = event {
+                let name = normalize_branch_name(&editor.read(cx).text(cx));
+                let name = (name != this.current_branch.as_ref()).then_some(name);
+                this.validation
+                    .update(cx, |validation, cx| validation.validate(name, cx));
                 cx.notify();
             }
         });
@@ -478,6 +555,8 @@ impl RenameBranchModal {
             editor,
             repo,
             _editor_subscription: editor_subscription,
+            validation,
+            _validation_subscription: validation_subscription,
         }
     }
 
@@ -487,11 +566,14 @@ impl RenameBranchModal {
 
     fn confirm(&mut self, _: &Confirm, window: &mut Window, cx: &mut Context<Self>) {
         let new_name = normalize_branch_name(&self.editor.read(cx).text(cx));
-        if new_name.is_empty() || new_name == self.current_branch.as_ref() {
+        if new_name == self.current_branch.as_ref() {
             cx.emit(DismissEvent);
             return;
         }
 
+        if !self.validation.read(cx).is_valid() {
+            return;
+        }
         let repo = self.repo.clone();
         let current_branch = self.current_branch.to_string();
         cx.spawn(async move |_, cx| {
@@ -551,7 +633,11 @@ impl Render for RenameBranchModal {
                     .child(
                         Label::new(new_name)
                             .size(LabelSize::Small)
-                            .color(Color::Muted)
+                            .color(if self.validation.read(cx).is_invalid() {
+                                Color::Error
+                            } else {
+                                Color::Muted
+                            })
                             .single_line()
                             .truncate(),
                     ),

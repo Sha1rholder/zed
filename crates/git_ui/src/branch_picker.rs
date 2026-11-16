@@ -26,7 +26,7 @@ use util::{ResultExt, maybe};
 use workspace::notifications::DetachAndPromptErr;
 use workspace::{ModalView, Workspace};
 
-use crate::branch_picker;
+use crate::{BranchNameValidation, branch_picker};
 use git_ui_core::notifications::show_error_toast;
 
 actions!(
@@ -692,6 +692,8 @@ fn branch_filter_menu(
 }
 
 pub struct BranchListDelegate {
+    validation: Entity<BranchNameValidation>,
+    validation_subscription: Option<Subscription>,
     workspace: WeakEntity<Workspace>,
     matches: Vec<Entry>,
     all_branches: Vec<Branch>,
@@ -1040,6 +1042,8 @@ impl BranchListDelegate {
             .map_or(BranchFilter::All, |filter| filter.0);
 
         Self {
+            validation: cx.new(|_| BranchNameValidation::default()),
+            validation_subscription: None,
             workspace,
             matches: vec![],
             repo,
@@ -1103,6 +1107,9 @@ impl BranchListDelegate {
             return;
         };
         let new_branch_name = normalize_branch_name(&new_branch_name);
+        if !self.validation.read(cx).is_valid() {
+            return;
+        }
         let base_branch = from_branch.map(|b| b.to_string());
         cx.spawn(async move |_, cx| {
             repo.update(cx, |repo, _| {
@@ -1449,6 +1456,12 @@ impl PickerDelegate for BranchListDelegate {
         window: &mut Window,
         cx: &mut Context<Picker<Self>>,
     ) -> Task<()> {
+        if self.validation_subscription.is_none() {
+            self.validation_subscription =
+                Some(cx.observe(&self.validation, |_, _, cx| cx.notify()));
+        }
+        self.validation
+            .update(cx, |validation, cx| validation.validate(None, cx));
         let all_branches = self.all_branches.clone();
         let branch_selection_context = self.is_select_only().then(|| {
             BranchSelectionContext::new(
@@ -1511,7 +1524,7 @@ impl PickerDelegate for BranchListDelegate {
                 matches
             };
             picker
-                .update(cx, |picker, _| {
+                .update(cx, |picker, cx| {
                     if let PickerState::CreateRemote(url) = &picker.delegate.state {
                         let query = normalize_branch_name(&query);
                         if !query.is_empty() {
@@ -1537,6 +1550,9 @@ impl PickerDelegate for BranchListDelegate {
                         let entry = if is_url {
                             Entry::NewUrl { url: query }
                         } else {
+                            picker.delegate.validation.update(cx, |validation, cx| {
+                                validation.validate(Some(query.clone()), cx)
+                            });
                             Entry::NewBranch { name: query }
                         };
                         // Only transition to NewBranch/NewRemote states when we only show their list item
@@ -1651,6 +1667,7 @@ impl PickerDelegate for BranchListDelegate {
                     None
                 };
                 self.create_branch(from_branch, name.into(), window, cx);
+                return;
             }
         }
 
@@ -1734,9 +1751,18 @@ impl PickerDelegate for BranchListDelegate {
                 .single_line()
                 .truncate()
                 .into_any_element(),
-            Entry::NewBranch { name } => Label::new(format!("Create Branch: \"{name}\"…"))
-                .single_line()
-                .truncate()
+            Entry::NewBranch { name } => h_flex()
+                .min_w_0()
+                .child(Label::new("Create Branch: \"").flex_shrink_0())
+                .child(
+                    Label::new(name.clone())
+                        .when(self.validation.read(cx).is_invalid(), |label| {
+                            label.color(Color::Error)
+                        })
+                        .single_line()
+                        .truncate(),
+                )
+                .child(Label::new("\"…").flex_shrink_0())
                 .into_any_element(),
             Entry::NewRemoteName { name, .. } => Label::new(format!("Create Remote: \"{name}\""))
                 .single_line()
@@ -1804,6 +1830,10 @@ impl PickerDelegate for BranchListDelegate {
             let focus_handle = self.focus_handle.clone();
 
             IconButton::new("create_from_default", IconName::GitBranchPlus)
+                .disabled(
+                    matches!(entry, Entry::NewBranch { .. })
+                        && !self.validation.read(cx).is_valid(),
+                )
                 .icon_size(IconSize::Small)
                 .tooltip(move |_, cx| {
                     Tooltip::for_action_in(
@@ -2027,6 +2057,14 @@ impl PickerDelegate for BranchListDelegate {
             return None;
         }
         let focus_handle = self.focus_handle.clone();
+        let selected_new_branch =
+            self.matches
+                .get(self.selected_index)
+                .and_then(|entry| match entry {
+                    Entry::NewBranch { name } => Some(name.as_str()),
+                    _ => None,
+                });
+        let can_create = selected_new_branch.is_some() && self.validation.read(cx).is_valid();
 
         let footer_container = || {
             h_flex()
@@ -2048,6 +2086,7 @@ impl PickerDelegate for BranchListDelegate {
                         let button_label = format!("Create New From: {default_branch}");
 
                         Button::new("branch-from-default", button_label)
+                            .disabled(!can_create)
                             .key_binding(
                                 KeyBinding::for_action_in(
                                     &menu::SecondaryConfirm,
@@ -2093,14 +2132,22 @@ impl PickerDelegate for BranchListDelegate {
                         },
                     )
                     .child(
-                        Button::new("switch_branch", "Switch")
-                            .key_binding(
-                                KeyBinding::for_action_in(&menu::Confirm, &focus_handle, cx)
-                                    .map(|kb| kb.size(rems_from_px(12_f32))),
-                            )
-                            .on_click(cx.listener(|this, _, window, cx| {
-                                this.delegate.confirm(false, window, cx);
-                            })),
+                        Button::new(
+                            "switch_branch",
+                            if selected_new_branch.is_some() {
+                                "Create"
+                            } else {
+                                "Switch"
+                            },
+                        )
+                        .disabled(selected_new_branch.is_some() && !can_create)
+                        .key_binding(
+                            KeyBinding::for_action_in(&menu::Confirm, &focus_handle, cx)
+                                .map(|kb| kb.size(rems_from_px(12_f32))),
+                        )
+                        .on_click(cx.listener(|this, _, window, cx| {
+                            this.delegate.confirm(false, window, cx);
+                        })),
                     );
 
                 Some(
@@ -2109,6 +2156,7 @@ impl PickerDelegate for BranchListDelegate {
                         .map(|this| match branch_from_default_button {
                             Some(button) => this.child(button).child(
                                 Button::new("create", "Create")
+                                    .disabled(!can_create)
                                     .key_binding(
                                         KeyBinding::for_action_in(
                                             &menu::Confirm,
@@ -2132,6 +2180,7 @@ impl PickerDelegate for BranchListDelegate {
                         let button_label = format!("Create New From: {default_branch}");
 
                         Button::new("branch-from-default", button_label)
+                            .disabled(!can_create)
                             .key_binding(
                                 KeyBinding::for_action_in(
                                     &menu::SecondaryConfirm,
@@ -2154,6 +2203,7 @@ impl PickerDelegate for BranchListDelegate {
                         })
                         .child(
                             Button::new("create-new-branch", "Create")
+                                .disabled(!can_create)
                                 .key_binding(
                                     KeyBinding::for_action_in(&menu::Confirm, &focus_handle, cx)
                                         .map(|kb| kb.size(rems_from_px(12_f32))),
@@ -3250,6 +3300,10 @@ mod tests {
                 assert_eq!(last_match.name(), NEW_BRANCH);
                 // State is NewBranch because no existing branches fuzzy-match the query
                 assert!(matches!(picker.delegate.state, PickerState::NewBranch));
+                picker.delegate.validation.update(cx, |validation, _| {
+                    validation.task = None;
+                    validation.finish(validation.generation, Ok(true));
+                });
                 picker.delegate.confirm(false, window, cx);
             })
         });
