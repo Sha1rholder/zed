@@ -115,6 +115,7 @@ impl CompletionProvider for ActionCompletionProvider {
                 completions,
                 display_options: CompletionDisplayOptions {
                     dynamic_width: true,
+                    ..Default::default()
                 },
                 is_incomplete: false,
             }])

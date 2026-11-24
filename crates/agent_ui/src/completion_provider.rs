@@ -1662,12 +1662,17 @@ impl<T: PromptCompletionProviderDelegate> CompletionProvider for PromptCompletio
                         completions,
                         display_options: CompletionDisplayOptions {
                             dynamic_width: true,
+                            ..Default::default()
                         },
                         is_incomplete: true,
                     }])
                 })
             }
             PromptCompletion::Mention(MentionCompletion { mode, argument, .. }) => {
+                let display_options = CompletionDisplayOptions {
+                    key_context: Some("showing_mention_completions"),
+                    ..Default::default()
+                };
                 if let Some(PromptContextType::Diagnostics) = mode {
                     if argument.is_some() {
                         return Task::ready(Ok(Vec::new()));
@@ -1684,7 +1689,7 @@ impl<T: PromptCompletionProviderDelegate> CompletionProvider for PromptCompletio
                     if !completions.is_empty() {
                         return Task::ready(Ok(vec![CompletionResponse {
                             completions,
-                            display_options: CompletionDisplayOptions::default(),
+                            display_options,
                             is_incomplete: false,
                         }]));
                     }
@@ -1879,6 +1884,7 @@ impl<T: PromptCompletionProviderDelegate> CompletionProvider for PromptCompletio
                         completions,
                         display_options: CompletionDisplayOptions {
                             dynamic_width: true,
+                            ..display_options
                         },
                         // Since this does its own filtering (see `filter_completions()` returns false),
                         // there is no benefit to computing whether this set of completions is incomplete.

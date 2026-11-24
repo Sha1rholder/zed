@@ -270,7 +270,7 @@ pub struct CompletionsMenu {
     markdown_cache: Rc<RefCell<VecDeque<(MarkdownCacheKey, Entity<Markdown>)>>>,
     language_registry: Option<Arc<LanguageRegistry>>,
     language: Option<LanguageName>,
-    display_options: CompletionDisplayOptions,
+    pub(super) display_options: CompletionDisplayOptions,
     snippet_sort_order: SnippetSortOrder,
 }
 

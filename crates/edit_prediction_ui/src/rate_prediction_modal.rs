@@ -1460,6 +1460,7 @@ impl editor::CompletionProvider for FeedbackCompletionProvider {
                 completions: vec![],
                 display_options: CompletionDisplayOptions {
                     dynamic_width: true,
+                    ..Default::default()
                 },
                 is_incomplete: false,
             }]));
@@ -1490,6 +1491,7 @@ impl editor::CompletionProvider for FeedbackCompletionProvider {
             completions,
             display_options: CompletionDisplayOptions {
                 dynamic_width: true,
+                ..Default::default()
             },
             is_incomplete: false,
         }]))

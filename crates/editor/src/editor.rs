@@ -2831,6 +2831,9 @@ impl Editor {
                 if menu.visible() {
                     key_context.add("menu");
                     key_context.add("showing_completions");
+                    if let Some(context) = menu.display_options.key_context {
+                        key_context.add(context);
+                    }
                 }
             }
             Some(CodeContextMenu::CodeActions(menu)) => {

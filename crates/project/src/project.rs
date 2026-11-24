@@ -757,11 +757,15 @@ pub struct CompletionResponse {
 #[derive(Default)]
 pub struct CompletionDisplayOptions {
     pub dynamic_width: bool,
+    pub key_context: Option<&'static str>,
 }
 
 impl CompletionDisplayOptions {
     pub fn merge(&mut self, other: &CompletionDisplayOptions) {
         self.dynamic_width = self.dynamic_width && other.dynamic_width;
+        if self.key_context != other.key_context {
+            self.key_context = None;
+        }
     }
 }
 

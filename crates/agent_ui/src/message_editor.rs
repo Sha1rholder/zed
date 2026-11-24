@@ -3343,6 +3343,12 @@ mod tests {
         cx.update(|cx| {
             editor::init(cx);
             workspace::init(app_state.clone(), cx);
+            let bindings = settings::KeymapFile::load_asset_allow_partial_failure(
+                settings::DEFAULT_KEYMAP_PATH,
+                cx,
+            )
+            .expect("default keymap should load");
+            cx.bind_keys(bindings);
         });
 
         app_state
@@ -3513,15 +3519,8 @@ mod tests {
             );
         });
 
-        // Select and confirm "File"
-        editor.update_in(&mut cx, |editor, window, cx| {
-            assert!(editor.has_visible_completions_menu());
-            editor.context_menu_next(&editor::actions::ContextMenuNext, window, cx);
-            editor.context_menu_next(&editor::actions::ContextMenuNext, window, cx);
-            editor.context_menu_next(&editor::actions::ContextMenuNext, window, cx);
-            editor.context_menu_next(&editor::actions::ContextMenuNext, window, cx);
-            editor.confirm_completion(&editor::actions::ConfirmCompletion::default(), window, cx);
-        });
+        // Move past "Files & Directories", then back to it before confirming.
+        cx.simulate_keystrokes("tab tab tab tab tab shift-tab enter");
 
         cx.run_until_parked();
 

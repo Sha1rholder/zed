@@ -848,6 +848,13 @@
     },
   },
   {
+    "context": "MessageEditor > Editor && showing_mention_completions",
+    "bindings": {
+      "tab": "editor::ContextMenuNext",
+      "shift-tab": "editor::ContextMenuPrevious",
+    },
+  },
+  {
     "context": "Editor && in_snippet && has_next_tabstop && !showing_completions",
     "use_key_equivalents": true,
     "bindings": {
